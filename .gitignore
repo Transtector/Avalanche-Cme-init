@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+._*
+*_venv
+
+# built wheels
+wheelhouse/
+
+# Mac/Windows OS Junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+node_modules
+bower_components
