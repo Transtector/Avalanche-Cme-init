@@ -94,10 +94,11 @@ try:
 			time.sleep(0.25)
 
 except KeyboardInterrupt:
-	pass
+	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCTRL-C stopped system".format(datetime.now()))
+	sys.stdout.flush()
 
 finally:
-	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()), flush=True)
+	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()))
 	sys.stdout.flush()
 	GPIO.cleanup()
 	sys.exit(0)
