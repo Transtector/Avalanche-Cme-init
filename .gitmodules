@@ -1,3 +1,4 @@
 [submodule "cmeinit/common"]
 	path = cmeinit/common
-	url = Z:\\workspace\\Avalanche\\Cme-common
+    url = git@cuscsgit01.smiths.net:Avalanche/Cme-common.git
+
