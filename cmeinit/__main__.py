@@ -93,5 +93,5 @@ try:
 			time.sleep(0.25)
 
 finally:
-	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done")
+	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()))
 	GPIO.cleanup()
