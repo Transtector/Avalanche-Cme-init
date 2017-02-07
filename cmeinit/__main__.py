@@ -97,3 +97,4 @@ except KeyboardInterrupt:
 finally:
 	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()), flush=True)
 	GPIO.cleanup()
+	time.sleep(1)
