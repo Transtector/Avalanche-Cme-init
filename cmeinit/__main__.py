@@ -91,6 +91,8 @@ try:
 
 		if not STOPPED:
 			time.sleep(0.25)
+except KeyboardInterrupt:
+	pass
 
 finally:
 	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()))
