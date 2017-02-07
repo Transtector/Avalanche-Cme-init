@@ -83,7 +83,7 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 
 spinners = "|/-\\"
 spinner_i = 0
-print("{0:%Y-%m-%d %H:%M:%S}\tStarting CME system".format(datetime.now()))
+print("{0:%Y-%m-%d %H:%M:%S}\tStarting CME system".format(datetime.now()), flush=True)
 
 try:
 	while not STOPPED:
@@ -95,5 +95,5 @@ except KeyboardInterrupt:
 	pass
 
 finally:
-	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()))
+	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()), flush=True)
 	GPIO.cleanup()
