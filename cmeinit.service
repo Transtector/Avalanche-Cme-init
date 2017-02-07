@@ -1,0 +1,14 @@
+[Unit]
+Description=CME System Service
+After=multi-user.target
+
+[Service]
+Type=idle
+Environment=VIRTUAL_ENV=/root/Cme-init/cmeinit_venv
+Environment=PATH=$VIRTUAL_ENV/bin:$PATH
+WorkingDirectory=/root/Cme-init
+ExecStart=python -m cmeinit
+
+[Install]
+WantedBy=multi-user.target
+
