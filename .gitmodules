@@ -1,0 +1,3 @@
+[submodule "cmeinit/common"]
+	path = cmeinit/common
+	url = Z:\\workspace\\Avalanche\\Cme-common
