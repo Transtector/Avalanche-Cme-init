@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import sys, time, subprocess, threading
+import logging, signal, sys, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -28,6 +28,21 @@ STOPPED = False
 # How long to hold reset button?
 RESET_REBOOT_SECONDS = 3 # <= this time: reboot; > this time: recovery or factory reset
 RESET_RECOVERY_SECONDS = 6 # <= this time: recovery mode; > this time: factory reset
+
+
+# Set up some basic logging
+BOOT_LOG = '/data/log/cme-boot.log'
+logger = logging.getLogger()
+formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+sh = logging.StreamHandler()
+fh = logging.handlers.RotatingFileHandler(BOOT_LOG, maxBytes=(1024 * 10), backupCount=1)
+sh.setFormatter(formatter)
+fh.setFormatter(formatter)
+sh.setLevel(logging.DEBUG)
+fh.setLevel(logging.DEBUG)
+logger.addHandler(sh)
+logger.addHandler(fh)
+
 
 # RESET detection callback
 def reset(ch):
@@ -81,24 +96,31 @@ def reset(ch):
 # Add the reset falling edge detector
 GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 
-spinners = "|/-\\"
-spinner_i = 0
-sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tStarting CME system".format(datetime.now()))
-sys.stdout.flush()
 
+
+# exit gracefully
+def cleanup(*args):
+	global STOPPED
+	STOPPED = True
+	GPIO.cleanup()
+	logger.info("CME system shutting down")
+	sys.exit(0)
+
+# SIGINT, SIGTERM signal handlers
+signal.signal(signal.SIGINT, cleanup)
+signal.signal(signal.SIGTERM, cleanup)
+
+
+logger.info("CME system starting")
+
+# Main loop
 try:
 	while not STOPPED:
-		spinner_i = (spinner_i + 1) % len(spinners)
-
 		if not STOPPED:
-			time.sleep(0.25)
+			time.sleep(1)
 
 except KeyboardInterrupt:
-	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCTRL-C stopped system".format(datetime.now()))
-	sys.stdout.flush()
+	cleanup()
 
-finally:
-	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()))
-	sys.stdout.flush()
-	GPIO.cleanup()
-	sys.exit(0)
+
+
