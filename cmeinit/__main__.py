@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import time, subprocess, threading
+import sys, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -83,7 +83,8 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 
 spinners = "|/-\\"
 spinner_i = 0
-print("{0:%Y-%m-%d %H:%M:%S}\tStarting CME system".format(datetime.now()), flush=True)
+sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tStarting CME system".format(datetime.now()))
+sys.stdout.flush()
 
 try:
 	while not STOPPED:
@@ -91,10 +92,12 @@ try:
 
 		if not STOPPED:
 			time.sleep(0.25)
+
 except KeyboardInterrupt:
 	pass
 
 finally:
-	print("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()), flush=True)
+	sys.stdout.write("{0:%Y-%m-%d %H:%M:%S}\tCME system launcher done".format(datetime.now()), flush=True)
+	sys.stdout.flush()
 	GPIO.cleanup()
-	time.sleep(1)
+	sys.exit(0)
