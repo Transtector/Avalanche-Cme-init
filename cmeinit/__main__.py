@@ -74,7 +74,7 @@ def reset(ch):
 		time.sleep(0.02)
 
 	# trigger a reboot on a delay so we have time to clean up
-	restart(delay=5, recovery_mode, factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=None)
+	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=None)
 
 	STOPPED = True
 
