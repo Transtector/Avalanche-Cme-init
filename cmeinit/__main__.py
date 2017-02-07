@@ -2,9 +2,12 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import sys, time, subprocess
+import time, subprocess, threading
+from datetime import datetime
 
 import RPi.GPIO as GPIO
+
+from .common.Reboot import restart
 
 # Use Broadcom GPIO numbering
 GPIO.setmode(GPIO.BCM)
@@ -26,15 +29,6 @@ STOPPED = False
 RESET_REBOOT_SECONDS = 3 # <= this time: reboot; > this time: recovery or factory reset
 RESET_RECOVERY_SECONDS = 6 # <= this time: recovery mode; > this time: factory reset
 
-# REBOOT w/delay
-def _reboot(delay=5):
-	# trigger a reboot
-	logger.info("CME rebooting in {0} seconds.".format(delay))	
-	
-	time.sleep(delay)
-	subprocess.call(['reboot'])
-
-
 # RESET detection callback
 def reset(ch):
 	global STOPPED
@@ -42,6 +36,10 @@ def reset(ch):
 	# ignore subsequent button pushes
 	if STOPPED:
 		return
+
+	# These paths are also used in the Cme package (Cme/cme/Config.py), so be careful if changing!
+	SETTINGS_FILE = '/data/settings.json'
+	RECOVERY_FILE = '/data/.recovery'
 
 	# on reset detect, set STATUS BLINKING/GREEN
 	GPIO.output(GPIO_STATUS_GREEN, True)
@@ -51,6 +49,11 @@ def reset(ch):
 	reset_start_seconds = time.time()
 	elapsed_seconds = 0
 
+	# when reset button is released, we'll have
+	# updated these Booleans (maybe)
+	recovery_mode = False
+	factory_reset = False
+
 	# wait for button release or time exceeds (RESET_RECOVERY_SECONDS + 2)
 	# for exhuberent button pressers
 	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and elapsed_seconds < (RESET_RECOVERY_SECONDS + 2):
@@ -58,26 +61,20 @@ def reset(ch):
 
 		# blink red after RECOVERY seconds
 		if elapsed_seconds > RESET_REBOOT_SECONDS:
+			recovery_mode = True
 			GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after FACTORY RESET seconds
 		if elapsed_seconds > RESET_RECOVERY_SECONDS:
+			recovery_mode = False
+			factory_reset = True
 			GPIO.output(GPIO_STATUS_SOLID, True)
 
+		# sleep just a bit
 		time.sleep(0.02)
 
-	if elapsed_seconds <= RESET_REBOOT_SECONDS:
-		# simple reboot
-		sys.stdout.write("\r\n\r\n{0:.2f} sec: Simple REBOOT detected!\r\n\r\n".format(elapsed_seconds))
-
-
-	elif elapsed_seconds > RESET_RECOVERY_SECONDS:
-		# factory defaults
-		sys.stdout.write("\r\n\r\n{0:.2f} sec: REBOOT with FACTORY DEFAULTS!\r\n\r\n".format(elapsed_seconds))
-
-	else:
-		# recovery mode
-		sys.stdout.write("\r\n\r\n{0:.2f} sec: REBOOT into RECOVERY!\r\n\r\n".format(elapsed_seconds))
+	# trigger a reboot on a delay so we have time to clean up
+	restart(delay=5, recovery_mode, factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=None)
 
 	STOPPED = True
 
@@ -86,20 +83,15 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 
 spinners = "|/-\\"
 spinner_i = 0
-
-sys.stderr.write("\x1b[2J\x1b[H")
-sys.stdout.write("\r\nStarting CME System...\r\n\r\n")
+print("{0:%Y-%m-%d %}\tStarting CME system".format(datetime.now()))
 
 try:
 	while not STOPPED:
-		sys.stdout.write("\tRunning {0}\x1b[K\r".format(spinners[spinner_i]))
-		sys.stdout.flush()
 		spinner_i = (spinner_i + 1) % len(spinners)
 
 		if not STOPPED:
 			time.sleep(0.25)
 
 finally:
-	sys.stdout.write("\r\n\r\n...done!\r\n\r\n")
+	print("{0:%Y-%m-%d %H:%M:%S\tCME system launcher done")
 	GPIO.cleanup()
-
