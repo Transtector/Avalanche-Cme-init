@@ -31,11 +31,12 @@ RESET_RECOVERY_SECONDS = 6 # <= this time: recovery mode; > this time: factory r
 
 
 # Set up some basic logging
-BOOT_LOG = '/data/log/cme-boot.log'
+from .common import Config
+
 logger = logging.getLogger()
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 sh = logging.StreamHandler()
-fh = logging.handlers.RotatingFileHandler(BOOT_LOG, maxBytes=(1024 * 10), backupCount=1)
+fh = logging.handlers.RotatingFileHandler(Config.BOOTLOG, maxBytes=(1024 * 10), backupCount=1)
 sh.setFormatter(formatter)
 fh.setFormatter(formatter)
 sh.setLevel(logging.DEBUG)
@@ -89,7 +90,7 @@ def reset(ch):
 		time.sleep(0.02)
 
 	# trigger a reboot on a delay so we have time to clean up
-	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=None)
+	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=logger)
 
 	STOPPED = True
 
