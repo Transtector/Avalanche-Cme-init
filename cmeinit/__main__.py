@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, signal, sys, time, subprocess, threading
+import logging, logging.handlers, signal, sys, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -33,9 +33,10 @@ RESET_RECOVERY_SECONDS = 6 # <= this time: recovery mode; > this time: factory r
 # Set up some basic logging
 from .common import Config
 
-logger = logging.getLogger()
+logger = logging.getLogger("cmeinit")
+logger.setLevel(logging.DEBUG) # let handlers set real level
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-sh = logging.StreamHandler()
+sh = logging.StreamHandler(sys.stdout)
 fh = logging.handlers.RotatingFileHandler(Config.BOOTLOG, maxBytes=(1024 * 10), backupCount=1)
 sh.setFormatter(formatter)
 fh.setFormatter(formatter)
