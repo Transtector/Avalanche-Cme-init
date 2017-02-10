@@ -65,18 +65,21 @@ def reset(ch):
 	recovery_mode = False
 	factory_reset = False
 
-	# wait for button release or time exceeds (RESET_RECOVERY_SECONDS + 2)
-	# for exhuberent button pressers
-	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and elapsed_seconds < (Config.RESET_RECOVERY_SECONDS + 2):
+	# Wait for reset button release and measure the time that takes.
+	# This loop stops if any of these:
+	# 	Reset button released (GPIO_N_RESET == GPIO.HIGH)
+	# 	Button held long enough to trigger factory reset
+	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and factory_reset:
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RECOVERY seconds
 		if elapsed_seconds > Config.RESET_REBOOT_SECONDS:
-			logger.info("Reset to recovery mode detected")
-			recovery_mode = True
-			GPIO.output(GPIO_STATUS_GREEN, False)
+			if not recovery_mode or factory_reset:
+				logger.info("Reset to recovery mode detected")
+				recovery_mode = True
+				GPIO.output(GPIO_STATUS_GREEN, False)
 
-		# solid red after FACTORY RESET seconds
+		# solid red after FACTORY RESET seconds - this will end our while loop
 		if elapsed_seconds > Config.RESET_RECOVERY_SECONDS:
 			logger.info("Reset to factory defaults detected")
 			recovery_mode = False
