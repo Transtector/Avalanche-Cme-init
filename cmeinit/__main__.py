@@ -88,6 +88,7 @@ def reset(ch):
 
 	# trigger a reboot on a delay so we have time to clean up
 	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.SETTINGS, recovery_file=Config.RECOVERY_FILE, logger=logger)
+	cleanup()
 
 # Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
 GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
