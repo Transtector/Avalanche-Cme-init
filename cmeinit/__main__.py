@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, logging.handlers, signal, os, sys, time, subprocess, threading
+import logging, logging.handlers, signal, os, sys, time, subprocess
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -86,8 +86,8 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 # exit gracefully - set LED status RED/BLINKING
 # then clean up and exit
 def cleanup(*args):
-	GPIO.output(GPIO_STATUS_GREEN, False)
-	GPIO.output(GPIO_STATUS_SOLID, False)	
+	GPIO.output(GPIO_STATUS_GREEN, False) # red
+	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
 	GPIO.cleanup()
 	logger.info("CME system shutting down")
 	sys.exit(0)
@@ -154,11 +154,12 @@ else:
 
 
 # STAGE 3.  RECOVERY LAUNCH (Red Solid)
-logger.info("Recovery mode - launching recovery API module")
+logger.info("Launching recovery API layer")
 GPIO.output(GPIO_STATUS_GREEN, False)
 GPIO.output(GPIO_STATUS_SOLID, True)
 
-
+# This blocks until cme exits
+subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True)
 
 # That's it - we're done here.
 cleanup()
