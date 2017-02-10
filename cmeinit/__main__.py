@@ -62,7 +62,7 @@ def reset(ch):
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RECOVERY seconds
-		if elapsed_seconds > RESET_REBOOT_SECONDS:
+		if elapsed_seconds > Config.RESET_REBOOT_SECONDS:
 			recovery_mode = True
 			GPIO.output(GPIO_STATUS_GREEN, False)
 
