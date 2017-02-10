@@ -133,7 +133,7 @@ if not recovery_mode:
 
 	logger.info("No software updates found")
 else:
-	logger.info("Recovery mode - software update stage bypassed")
+	logger.info("Software update stage bypassed (Recovery mode)")
 
 
 
@@ -143,23 +143,23 @@ else:
 # A parallel loop is started to watch them and
 # shuts down if either terminates abnormally.
 if not recovery_mode:
-	logger.info("Launching CME software modules")
+	logger.info("Launching software modules")
 	GPIO.output(GPIO_STATUS_GREEN, True)
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# TODO: Implement the docker launcher
 else:
-	logger.info("Recovery mode - CME module launch bypassed")
+	logger.info("Module launch stage bypassed (Recovery mode)")
 
 
 
 # STAGE 3.  RECOVERY LAUNCH (Red Solid)
-logger.info("Launching recovery API layer")
+logger.info("Launching recovery module")
 GPIO.output(GPIO_STATUS_GREEN, False)
 GPIO.output(GPIO_STATUS_SOLID, True)
 
 # This blocks until cme exits
-subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True)
+subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True, executable='/bin/bash')
 
 # That's it - we're done here.
 cleanup()
