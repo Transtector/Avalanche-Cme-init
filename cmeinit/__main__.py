@@ -43,6 +43,15 @@ logger.addHandler(fh)
 # RESET detection callback
 def reset(ch):
 
+	# Software edge debounce - check level after 50 ms
+	# and return if still HIGH (false trigger)
+	time.sleep(0.05)
+	if GPIO.input(GPIO_N_RESET) == GPIO.HIGH:
+		return
+
+	# Else once we get here we're rebooting and nothing can stop us!
+	logger.info("Reset detected")
+
 	# on reset detect, set STATUS BLINKING/GREEN
 	GPIO.output(GPIO_STATUS_GREEN, True)
 	GPIO.output(GPIO_STATUS_SOLID, False)
@@ -63,11 +72,13 @@ def reset(ch):
 
 		# blink red after RECOVERY seconds
 		if elapsed_seconds > Config.RESET_REBOOT_SECONDS:
+			logger.info("Reset to recovery mode detected")
 			recovery_mode = True
 			GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after FACTORY RESET seconds
 		if elapsed_seconds > Config.RESET_RECOVERY_SECONDS:
+			logger.info("Reset to factory defaults detected")
 			recovery_mode = False
 			factory_reset = True
 			GPIO.output(GPIO_STATUS_SOLID, True)
@@ -78,8 +89,8 @@ def reset(ch):
 	# trigger a reboot on a delay so we have time to clean up
 	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.SETTINGS, recovery_file=Config.RECOVERY_FILE, logger=logger)
 
-# Add the reset falling edge detector
-GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
+# Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
+GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 
 
 
