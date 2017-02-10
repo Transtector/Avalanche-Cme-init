@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, logging.handlers, signal, sys, time, subprocess, threading
+import logging, logging.handlers, signal, os, sys, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -22,16 +22,10 @@ GPIO.setup(GPIO_STATUS_SOLID, GPIO.OUT, initial=False) # Start w/blinking
 GPIO.setup(GPIO_STATUS_GREEN, GPIO.OUT, initial=True) # Start w/green
 GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edge
 
-# Monitor this global in callbacks to know when the script is done
-STOPPED = False
-
-# How long to hold reset button?
-RESET_REBOOT_SECONDS = 3 # <= this time: reboot; > this time: recovery or factory reset
-RESET_RECOVERY_SECONDS = 6 # <= this time: recovery mode; > this time: factory reset
-
 
 # Set up some basic logging
 from .common import Config
+
 
 logger = logging.getLogger("cmeinit")
 logger.setLevel(logging.DEBUG) # let handlers set real level
@@ -48,15 +42,6 @@ logger.addHandler(fh)
 
 # RESET detection callback
 def reset(ch):
-	global STOPPED
-
-	# ignore subsequent button pushes
-	if STOPPED:
-		return
-
-	# These paths are also used in the Cme package (Cme/cme/Config.py), so be careful if changing!
-	SETTINGS_FILE = '/data/settings.json'
-	RECOVERY_FILE = '/data/.recovery'
 
 	# on reset detect, set STATUS BLINKING/GREEN
 	GPIO.output(GPIO_STATUS_GREEN, True)
@@ -73,7 +58,7 @@ def reset(ch):
 
 	# wait for button release or time exceeds (RESET_RECOVERY_SECONDS + 2)
 	# for exhuberent button pressers
-	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and elapsed_seconds < (RESET_RECOVERY_SECONDS + 2):
+	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and elapsed_seconds < (Config.RESET_RECOVERY_SECONDS + 2):
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RECOVERY seconds
@@ -82,7 +67,7 @@ def reset(ch):
 			GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after FACTORY RESET seconds
-		if elapsed_seconds > RESET_RECOVERY_SECONDS:
+		if elapsed_seconds > Config.RESET_RECOVERY_SECONDS:
 			recovery_mode = False
 			factory_reset = True
 			GPIO.output(GPIO_STATUS_SOLID, True)
@@ -91,19 +76,18 @@ def reset(ch):
 		time.sleep(0.02)
 
 	# trigger a reboot on a delay so we have time to clean up
-	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=SETTINGS_FILE, recovery_file=RECOVERY_FILE, logger=logger)
-
-	STOPPED = True
+	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.SETTINGS, recovery_file=Config.RECOVERY_FILE, logger=logger)
 
 # Add the reset falling edge detector
 GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset)
 
 
 
-# exit gracefully
+# exit gracefully - set LED status RED/BLINKING
+# then clean up and exit
 def cleanup(*args):
-	global STOPPED
-	STOPPED = True
+	GPIO.output(GPIO_STATUS_GREEN, False)
+	GPIO.output(GPIO_STATUS_SOLID, False)	
 	GPIO.cleanup()
 	logger.info("CME system shutting down")
 	sys.exit(0)
@@ -115,14 +99,66 @@ signal.signal(signal.SIGTERM, cleanup)
 
 logger.info("CME system starting")
 
-# Main loop
-try:
-	while not STOPPED:
-		if not STOPPED:
-			time.sleep(1)
+# STAGE 1.  RECOVERY MODE (Green Blinking)
+#
+# If recovery mode is requested, we'll just
+# bypass the updates installation and modules
+# bootup stages and go directly to the
+# recovery startup stage.
+recovery_mode = False
+if os.path.isfile(Config.RECOVERY_FILE):
+	logger.info("Recovery mode boot requested")
+	try:
+		os.remove(Config.RECOVERY_FILE)
+	except:
+		pass
+	recovery_mode = True
+else:
+	logger.info("Normal boot mode requested")
 
-except KeyboardInterrupt:
-	cleanup()
+
+
+# STAGE 2.  SOFTWARE UPDATE (Green Blinking)
+#
+# If not booting to recovery mode, this stage
+# looks at the software updates folder and
+# maniuplates the installed docker images if
+# images are found there.  Only one update at
+# a time is allowed, but previous images are
+# preserved for rollback.
+
+# TODO: Implement the software udpates
+if not recovery_mode:
+	logger.info("Checking for software updates")
+
+	logger.info("No software updates found")
+else:
+	logger.info("Recovery mode - software update stage bypassed")
 
 
 
+# STAGE 3.  MODULE LAUNCH (Green Solid)
+#
+# The Cme and Cme-hw dockers are launched here.
+# A parallel loop is started to watch them and
+# shuts down if either terminates abnormally.
+if not recovery_mode:
+	logger.info("Launching CME software modules")
+	GPIO.output(GPIO_STATUS_GREEN, True)
+	GPIO.output(GPIO_STATUS_SOLID, True)
+
+	# TODO: Implement the docker launcher
+else:
+	logger.info("Recovery mode - CME module launch bypassed")
+
+
+
+# STAGE 3.  RECOVERY LAUNCH (Red Solid)
+logger.info("Recovery mode - launching recovery API module")
+GPIO.output(GPIO_STATUS_GREEN, False)
+GPIO.output(GPIO_STATUS_SOLID, True)
+
+
+
+# That's it - we're done here.
+cleanup()
