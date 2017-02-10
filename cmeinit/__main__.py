@@ -69,7 +69,7 @@ def reset(ch):
 	# This loop stops if any of these:
 	# 	Reset button released (GPIO_N_RESET == GPIO.HIGH)
 	# 	Button held long enough to trigger factory reset
-	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and factory_reset:
+	while GPIO.input(GPIO_N_RESET) == GPIO.LOW or not factory_reset:
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RECOVERY seconds
