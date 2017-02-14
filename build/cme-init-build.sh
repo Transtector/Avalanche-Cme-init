@@ -39,7 +39,7 @@ source ${SRC}/cmeinit_venv/bin/activate
 pip wheel .
 
 # Copy the top-level VERSION file
-cp ${SRCDIST}/VERSION ${DIST}/VERSION
+cp ${SRCDIST}/VERSION ${DIST}
 
 # Wheels are built - done with srcdist/
 popd
