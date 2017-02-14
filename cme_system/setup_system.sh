@@ -12,7 +12,7 @@ echo "  This script is intended to set up a CME device with all system component
 echo "  The CME device must be manually rebooted after the script runs and a SETUP"
 echo "  environment variable MUST indiate the server where this script came from."
 echo
-read -n1 -rsp "    CTRL-C to exit now, any other key to continue..."
+read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
 
 
@@ -21,7 +21,7 @@ export HOME=/root
 cd
 
 # Set bash to have a nice looking color prompt
-cat <<EOF > .bashrc
+cat <<'EOF' > .bashrc
 # ~/.bashrc: executed by bash(1) for non-login shells.
 red='\[\e[0;31m\]'
 green='\[\e[0;32m\]'
@@ -60,11 +60,12 @@ echo "  ...done with hostname, hosts, and motd"
 echo 
 echo "  Setting up CME device networking..."
 cp /etc/network/interfaces /etc/network/interfaces.ORIG
-curl -o /etc/network/ ${SETUP}/interfaces_static
-curl -o /etc/network/ ${SETUP}/interfaces_dhcp
+curl -o /etc/network/interfaces_static ${SETUP}/interfaces_static
+curl -o /etc/network/interfaces_dhcp ${SETUP}/interfaces_dhcp
 
 # This symlink sets network to use STATIC by default.  Replace
 # interfaces_static with interfaces_dhcp to use DHCP instead.
+rm /etc/network/interfaces
 ln -s /etc/network/interfaces_static /etc/network/interfaces
 echo "  ...networking set to STATIC IP address"
 
@@ -73,7 +74,7 @@ echo "  ...networking set to STATIC IP address"
 # our code repository servers.
 echo
 echo "  Adding SSH keys for Transtector GIT server access..."
-mkdir .ssh
+mkdir -p .ssh
 cd .ssh
 curl -O ${SETUP}/id_rsa
 curl -O ${SETUP}/id_rsa.pub
@@ -131,7 +132,7 @@ echo "  Setting up Cme (recovery)..."
 mkdir Cme
 pushd Cme
 python -m venv cme_venv
-source cmeinit_venv/bin/activate
+source cme_venv/bin/activate
 curl -O ${SETUP}/${CME}
 tar -xvzf ${CME}
 rm ${CME}
