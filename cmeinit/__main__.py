@@ -112,69 +112,85 @@ signal.signal(signal.SIGINT, cleanup)
 signal.signal(signal.SIGTERM, cleanup)
 
 
-logger.info("CME system starting")
+# Main program entry
+def main(*args):
 
-# STAGE 1.  RECOVERY MODE (Green Blinking)
-#
-# If recovery mode is requested, we'll just
-# bypass the updates installation and modules
-# bootup stages and go directly to the
-# recovery startup stage.
-recovery_mode = False
-if os.path.isfile(Config.RECOVERY_FILE):
-	logger.info("Recovery mode boot requested")
-	try:
-		os.remove(Config.RECOVERY_FILE)
-	except:
-		pass
-	recovery_mode = True
-else:
-	logger.info("Normal boot mode requested")
+	logger.info("CME system starting")
 
-
-
-# STAGE 2.  SOFTWARE UPDATE (Green Blinking)
-#
-# If not booting to recovery mode, this stage
-# looks at the software updates folder and
-# maniuplates the installed docker images if
-# images are found there.  Only one update at
-# a time is allowed, but previous images are
-# preserved for rollback.
-
-# TODO: Implement the software udpates
-if not recovery_mode:
-	logger.info("Checking for software updates")
-
-	logger.info("No software updates found")
-else:
-	logger.info("Software update stage bypassed (Recovery mode)")
+	# STAGE 1.  RECOVERY MODE (Green Blinking)
+	#
+	# If recovery mode is requested, we'll just
+	# bypass the updates installation and modules
+	# bootup stages and go directly to the
+	# recovery startup stage.
+	recovery_mode = False
+	if os.path.isfile(Config.RECOVERY_FILE):
+		logger.info("Recovery mode boot requested")
+		try:
+			os.remove(Config.RECOVERY_FILE)
+		except:
+			pass
+		recovery_mode = True
+	else:
+		logger.info("Normal boot mode requested")
 
 
+	# STAGE 2.  SOFTWARE UPDATE (Green Blinking)
+	#
+	# If not booting to recovery mode, this stage
+	# looks at the software updates folder and
+	# maniuplates the installed docker images if
+	# images are found there.
+	if not recovery_mode:
+		logger.info("Checking for software updates")
 
-# STAGE 3.  MODULE LAUNCH (Green Solid)
-#
-# The Cme and Cme-hw dockers are launched here.
-# A parallel loop is started to watch them and
-# shuts down if either terminates abnormally.
-if not recovery_mode:
-	logger.info("Launching software modules")
-	GPIO.output(GPIO_STATUS_GREEN, True)
+		logger.info("No software updates found")
+	else:
+		logger.info("Software update stage bypassed (Recovery mode)")
+
+
+	# STAGE 3.  MODULE LAUNCH (Green Solid)
+	#
+	# The Cme and Cme-hw dockers are launched here.
+	# A parallel loop is started to watch them and
+	# shuts down if either terminates abnormally.
+	if not recovery_mode:
+		logger.info("Launching software modules")
+		GPIO.output(GPIO_STATUS_GREEN, True)
+		GPIO.output(GPIO_STATUS_SOLID, True)
+
+		# TODO: Implement the docker launcher
+	else:
+		logger.info("Module launch stage bypassed (Recovery mode)")
+
+
+
+	# STAGE 4.  RECOVERY LAUNCH (Red Solid)
+	#
+	# If we've made it here, then the application layer has stopped
+	# and we need to launch the recovery mode API layer.
+	logger.info("Launching recovery module")
+	GPIO.output(GPIO_STATUS_GREEN, False)
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
-	# TODO: Implement the docker launcher
-else:
-	logger.info("Module launch stage bypassed (Recovery mode)")
+	# This blocks until cme exits
+	subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True, executable='/bin/bash')
+
+	# That's it - we're done here.
+	cleanup()
 
 
+if __name__ == "__main__":
+	
+	try:
+		main()
 
-# STAGE 3.  RECOVERY LAUNCH (Red Solid)
-logger.info("Launching recovery module")
-GPIO.output(GPIO_STATUS_GREEN, False)
-GPIO.output(GPIO_STATUS_SOLID, True)
+	except KeyboardInterrupt:
+		logger.info("Avalanche (Cme-init) shutdown requested ... exiting")
 
-# This blocks until cme exits
-subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True, executable='/bin/bash')
+	except Exception as e:
+		logger.info("Avalanche (Cme-init) has STOPPED on exception {0}".format(e))
 
-# That's it - we're done here.
-cleanup()
+	cleanup()
+
+
