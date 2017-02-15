@@ -4,6 +4,10 @@
 # layer) distribution tarball that can be downloaded to a CME device
 # and installed.
 
+# Read the VERSION file to use in the created archive name
+VERSION=$(<VERSION)
+ARCHIVE=1500-000-v$VERSION-SWARE-CME_INIT.tgz
+
 # Requires Cme-init source folder
 SRC=/root/Cme-init
 
@@ -47,10 +51,6 @@ rm -rf ${SRCDIST}
 
 # Now generate the archive of the wheels
 pushd ${DIST}
-
-# Read the VERSION file to use in the created archive name
-VERSION=$(<VERSION)
-ARCHIVE=1510-000-v$VERSION-SWARE-CME_INIT.tgz
 
 tar -czvf ../${ARCHIVE} .
 
