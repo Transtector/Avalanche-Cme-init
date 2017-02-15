@@ -4,20 +4,38 @@
 # and additional files are copied from the folder where this script
 # runs to /etc, /etc/network and other destinations.
 
-# Before running this script, export SETUP to the URL used
-# for supplying this and additional files to curl.
+# This script requires some env variables to be setup in order to
+# retrieve the installation files and versioned Cme applications.
+
+# SETUP - provide a URL that can be used by curl
+# CMEINIT_VERSION - the version of the Cme-init program to install
+# CME_VERSION - the API layer version that will be installed for recovery mode
 
 echo
 echo "  This script is intended to set up a CME device with all system components."
-echo "  The CME device must be manually rebooted after the script runs and a SETUP"
-echo "  environment variable MUST indiate the server where this script came from."
+echo "  The CME device must be manually rebooted after the script runs.  The script"
+echo "  requires several environment variables be set in order to retireve the"
+echo "  installation files and versioned Cme application packages."
 echo
-echo "  For example,"
+echo "  Prior to running this script, export these environment variables:"
 echo
-echo "    $ export SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme/cme_system"
+echo "    SETUP - provide a URL that can be used by curl"
+echo "        $ export SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme/cme_system"
+echo
+echo "    CMEINIT_VERSION - identify the Cme-init program version to install"
+echo "        $ export CMEINIT_VERSION=0.1.0"
+echo
+echo "    CME_VERSION - identify the Cme program installed for recovery mode operation"
+echo "        $ export CME_VERSION=0.1.0"
 echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
+
+# you must do `export CMEINIT_VERSION=0.1.0`
+CMEINIT=1500-000-v${CMEINIT_VERSION}-SWARE-CME_INIT.tgz
+
+# you must do `export CME_VERSION=0.1.0`
+CME=1510-000-v${CME_VERSION}-SWARE-CME_RECOVERY.tgz
 
 
 # ensure we start at /root
@@ -140,9 +158,6 @@ cd
 
 
 # Set up Cme-init
-CMEINIT_VERSION=0.1.0
-CMEINIT=1510-000-v${CMEINIT_VERSION}-SWARE-CME_INIT.tgz
-
 echo
 echo "  Setting up Cme-init..."
 mkdir Cme-init
@@ -159,9 +174,6 @@ popd
 echo "  ...done with Cme-init"
 
 # Setup the Cme (recovery) API
-CME_VERSION=0.1.0
-CME=1500-000-v${CME_VERSION}-SWARE-CME_RECOVERY.tgz
-
 echo
 echo "  Setting up Cme (recovery)..."
 mkdir Cme
