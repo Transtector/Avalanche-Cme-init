@@ -35,13 +35,43 @@ purple='\[\e[0;35m\]'
 NC='\[\e[0m\]' # no color - reset
 bold=`tput bold`
 normal=`tput sgr0`
+
+# set a color prompt with user, hostname, path, and history
+PS1="${green}\u${NC}@${yellow}\h${NC}[${purple}\w${NC}:${red}\!${NC}] \$ "
  
-PS1="${debian_chroot:+($debian_chroot)}${green}\u${NC}@${yellow}\h${NC}[${purple}\w${NC}:${red}\!${NC}] \$ "
- 
-# make `ls' be colorized:
+# colorize 'ls'
 export LS_OPTIONS='--color=auto'
 eval "`dircolors`"
 alias ls='ls $LS_OPTIONS'
+
+# Add some useful docker run functions
+
+# Interactively run the cme docker (arg1, arg2)
+#	arg1: image name:tag (e.g., cme:0.1.0)
+#	arg2: optional command to run in container
+#		instead of 'cme' (e.g., /bin/bash)
+docker-cme() {
+	docker run -it --rm --net=host --privileged --name cme \
+		-v /data:/data -v /etc/network:/etc/network \
+		-v /etc/ntp.conf:/etc/ntp.conf \
+		-v /etc/localtime:/etc/localtime \
+		-v /tmp/cmehostinput:/tmp/cmehostinput \
+		-v /tmp/cmehostoutput:/tmp/cmehostoutput \
+		-v /media/usb:/media/usb $1 $2
+}
+
+# Runs the cmehw docker (arg1, arg2)
+#	arg1: image name:tag (e.g., cmehw:0.1.0)
+#	arg2: optional command to run in containter
+#		instead of 'cmehw' (e.g., /bin/bash)
+docker-cmehw() {
+	docker run -it --rm --privileged --name cme-hw \
+		--device=/dev/spidev0.0:/dev/spidev0.0 \
+		--device=/dev/spidev0.1:/dev/spidev0.1 \
+		--device=/dev/mem:/dev/mem \
+		-v /data:/data $1 $2
+}
+
 EOF
 source .bashrc
 
