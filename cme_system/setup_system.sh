@@ -12,6 +12,10 @@ echo "  This script is intended to set up a CME device with all system component
 echo "  The CME device must be manually rebooted after the script runs and a SETUP"
 echo "  environment variable MUST indiate the server where this script came from."
 echo
+echo "  For example,"
+echo
+echo "    $ export SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme/cme_system"
+echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
 
@@ -120,6 +124,7 @@ tar -xvzf ${CMEINIT}
 rm ${CMEINIT}
 pip install --no-index -f wheelhouse cmeinit
 rm -rf wheelhouse
+curl -O ${SETUP}/cme-docker-fifo.sh # adds the docker FIFO script to Cme-init/
 popd
 echo "  ...done with Cme-init"
 
