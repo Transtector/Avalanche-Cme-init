@@ -4,26 +4,27 @@
 # layer) distribution tarball that can be downloaded to a CME device
 # and installed.
 
-# Set project source directory
-SRC=$(pwd)/Cme-init
+SRC=$(pwd)/Cme-init  # project source code
+SRCDIST=$(pwd)/srcdist # source copied here for building
+DIST=$(pwd)/dist # built code ends up here
 
 # Read the VERSION file to use in the created archive name
 VERSION=$(<${SRC}/VERSION)
 ARCHIVE=1500-000-v$VERSION-SWARE-CME_INIT.tgz
 
 # Point PIP env paths to wheelhouse
-export WHEELHOUSE=dist/wheelhouse
+export WHEELHOUSE=${DIST}/wheelhouse
 export PIP_WHEEL_DIR=$WHEELHOUSE
 export PIP_FIND_LINKS=$WHEELHOUSE
 
-# Make the temp directories
-mkdir srcdist  # source files copied here for the build
+# Make the SRCDIST and DIST directories
+mkdir ${SRCDIST}  # source files copied here for the build
 mkdir -p ${WHEELHOUSE} # PIP stores the built wheels here
 
 # Copy source files over to srcdist/
 # Note: this is to avoid wheel adding a bunch of files and
 # directories that are not needed in the distribution.
-pushd srcdist
+pushd ${SRCDIST}
 cp -R ${SRC}/cmeinit/ .
 cp ${SRC}/VERSION .
 cp ${SRC}/setup.py .
@@ -36,16 +37,16 @@ source ${SRC}/cmeinit_venv/bin/activate
 pip wheel .
 
 popd
-cp srcdist/VERSION dist # copy VERSION
-rm -rf srcdist # done w/srcdist
+cp ${SRCDIST}/VERSION ${DIST} # copy VERSION
+rm -rf ${SRCDIST} # done w/srcdist
 
 # Now generate the archive of the wheels
-pushd dist
+pushd ${DIST}
 
 tar -czvf ../${ARCHIVE} .
 
 # Done with the built distribution
 popd
-rm -rf dist
+rm -rf ${DIST}
 
 echo "Done!"
