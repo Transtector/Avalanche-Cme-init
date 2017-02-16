@@ -28,7 +28,6 @@ cp -R ${SRC}/cmeinit/ .
 cp ${SRC}/VERSION .
 cp ${SRC}/setup.py .
 
-
 # Activate the Cme-init venv
 source ${SRC}/cmeinit_venv/bin/activate
 
@@ -36,12 +35,9 @@ source ${SRC}/cmeinit_venv/bin/activate
 # These will show up in WHEELHOUSE
 pip wheel .
 
-# Copy the top-level VERSION file
-cp srcdist/VERSION dist
-
-# Wheels are built - done with srcdist/
 popd
-rm -rf srcdist
+cp srcdist/VERSION dist # copy VERSION
+rm -rf srcdist # done w/srcdist
 
 # Now generate the archive of the wheels
 pushd dist
