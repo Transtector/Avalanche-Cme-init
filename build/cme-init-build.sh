@@ -5,7 +5,7 @@
 # and installed.
 
 # Set project source directory
-SRC=Cme-init
+SRC=$(pwd)/Cme-init
 
 # Read the VERSION file to use in the created archive name
 VERSION=$(<${SRC}/VERSION)
@@ -13,12 +13,12 @@ ARCHIVE=1500-000-v$VERSION-SWARE-CME_INIT.tgz
 
 # Point PIP env paths to wheelhouse
 export WHEELHOUSE=dist/wheelhouse
-export PIP_WHEEL_DIR=dist/wheelhouse
-export PIP_FIND_LINKS=dist/wheelhouse
+export PIP_WHEEL_DIR=$WHEELHOUSE
+export PIP_FIND_LINKS=$WHEELHOUSE
 
 # Make the temp directories
 mkdir srcdist  # source files copied here for the build
-mkdir -p dist/${WHEELHOUSE} # PIP stores the built wheels here
+mkdir -p ${WHEELHOUSE} # PIP stores the built wheels here
 
 # Copy source files over to srcdist/
 # Note: this is to avoid wheel adding a bunch of files and
