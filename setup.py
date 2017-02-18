@@ -12,6 +12,6 @@ setup (
 	packages				= ['cmeinit', 'cmeinit.common'],
 	include_package_data	= True,
 	zip_safe				= False,
-	install_requires		= ["RPi.GPIO"],
+	install_requires		= ["semver", "RPi.GPIO"],
 	entry_points			= {'console_scripts': ['cmeinit = cmeinit.__main__:main'] }
 )

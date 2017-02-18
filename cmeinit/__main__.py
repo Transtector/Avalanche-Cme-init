@@ -2,10 +2,11 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, logging.handlers, signal, os, sys, time, subprocess
+import logging, logging.handlers, signal, os, sys, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
+import semver
 
 from .common.Reboot import restart
 
@@ -26,6 +27,11 @@ GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edg
 # Set up some basic logging
 from .common import Config
 
+# delete BOOTLOG (start fresh every boot)
+try:
+	os.remove(Config.BOOTLOG)
+except:
+	pass
 
 logger = logging.getLogger("cmeinit")
 logger.setLevel(logging.DEBUG) # let handlers set real level
@@ -142,11 +148,11 @@ def main(*args):
 	# maniuplates the installed docker images if
 	# images are found there.
 	if not recovery_mode:
-		logger.info("Checking for software updates")
+		logger.info("Checking for updates")
 
-		logger.info("No software updates found")
+		logger.info("No updates found")
 	else:
-		logger.info("Software update stage bypassed (Recovery mode)")
+		logger.info("Update stage bypassed (Recovery mode)")
 
 
 	# STAGE 3.  MODULE LAUNCH (Green Solid)
@@ -155,11 +161,48 @@ def main(*args):
 	# A parallel loop is started to watch them and
 	# shuts down if either terminates abnormally.
 	if not recovery_mode:
-		logger.info("Launching software modules")
-		GPIO.output(GPIO_STATUS_GREEN, True)
-		GPIO.output(GPIO_STATUS_SOLID, True)
+		logger.info("Launching modules")
 
-		# TODO: Implement the docker launcher
+		# remove any existing containers
+		containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
+		for container in containers:
+			subprocess.run(['docker', 'rm', container])
+
+		# list images
+		cme = None
+		cmehw = None
+		images = subprocess.run(['docker', 'images'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
+		for image in images[1:]:
+			img = image.split()
+			cme = _parse_image('cme', cme, img)
+			cmdhw = _parse_image('cmehw', cmehw, img)
+
+		# only launch if we have both images
+		if cme and cmehw:
+			# launch the cme-docker-fifo (this call does not block)
+			subprocess.Popen([os.path.join(os.getcwd(), 'cme-docker-fifo.sh')])
+
+			# launch Cme docker
+			t_cme = threading.Thread(target=_launch_docker, args=(cme))
+			t_cme.start()
+
+			t_cmehw = threading.Thread(target=_launch_docker, args=(cmehw))
+			t_cmehw.start()
+
+			# set the pretty green light
+			GPIO.output(GPIO_STATUS_GREEN, True)
+			GPIO.output(GPIO_STATUS_SOLID, True)
+
+			# wait for dockers to stop
+			t_cme.join()
+			t_cmehw.join()
+
+			logger.warning("Application module(s) exiting")
+
+		else:
+			logger.warning("Application modules not found")
+
+
 	else:
 		logger.info("Module launch stage bypassed (Recovery mode)")
 
@@ -178,6 +221,52 @@ def main(*args):
 
 	# That's it - we're done here.
 	cleanup()
+
+
+# Routine for threaded launch of docker image (image = [ name, tag ])
+def _launch_docker(image):
+
+	# common command line
+	cmd = ['docker', 'run', '-d', '--privileged', '--name']
+
+	if name == 'cme':
+		cmd.extend = ['cme', '--net=host' ]
+		cmd.extend = ['-v', '/data:/data' ]
+		cmd.extend = ['-v', '/etc/network:/etc/network' ]
+		cmd.extend = ['-v', '/etc/ntp.conf:/etc/ntp.conf' ]
+		cmd.extend = ['-v', '/etc/localtime:/etc/localtime' ]
+		cmd.extend = ['-v', '/tmp/cmehostinput:/tmp/cmehostinput' ]
+		cmd.extend = ['-v', '/tmp/cmehostoutput:/tmp/cmehostoutput' ]
+		cmd.extend = ['-v', '/media/usb:/media/usb' ]
+		cmd.extend = [ image[0] + ':' + image[1] ]
+
+	if name == 'cmehw':
+		cmd.extend = ['cme-hw' ]
+		cmd.extend = ['-v', '/data:/data' ]
+		cmd.extend = ['--device=/dev/spidev0.0:/dev/spidev0.0' ]
+		cmd.extend = ['--device=/dev/spidev0.1:/dev/spidev0.1' ]
+		cmd.extend = ['--device=/dev/mem:/dev/mem' ]
+		cmd.extend = [ image[0] + ':' + image[1] ]
+
+	# Run docker image (detached, -d) and collect container ID
+	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode()
+	
+	# Wait for the (detached) container to stop running
+	subprocess.run(['docker', 'wait', ID ])  # <--- this should block while container runs!
+
+	# Remove the container
+	subprocess.run(['docker', 'rm', ID ])
+
+
+def _parse_image(name, current_image, new_image)
+	if not new_image[0] == name:
+		return current_image
+
+	if not current_image or semver.match(new_img[1], '>=' + current_image[1]):
+		return [ new_image[0], new_img[1] ]
+
+	return current_image
+
 
 
 if __name__ == "__main__":
