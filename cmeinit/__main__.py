@@ -187,10 +187,10 @@ def main(*args):
 			subprocess.Popen([fifo])
 
 			# launch Cme docker
-			t_cme = threading.Thread(target=_launch_docker, args=(cme))
+			t_cme = threading.Thread(target=_launch_docker, args=(cme, ))
 			t_cme.start()
 
-			t_cmehw = threading.Thread(target=_launch_docker, args=(cmehw))
+			t_cmehw = threading.Thread(target=_launch_docker, args=(cmehw, ))
 			t_cmehw.start()
 
 			# set the pretty green light
@@ -233,7 +233,7 @@ def _launch_docker(image):
 	# common command line
 	cmd = ['docker', 'run', '-d', '--privileged', '--name']
 
-	if name == 'cme':
+	if image[0] == 'cme':
 		cmd.extend = ['cme', '--net=host' ]
 		cmd.extend = ['-v', '/data:/data' ]
 		cmd.extend = ['-v', '/etc/network:/etc/network' ]
@@ -244,7 +244,7 @@ def _launch_docker(image):
 		cmd.extend = ['-v', '/media/usb:/media/usb' ]
 		cmd.extend = [ image[0] + ':' + image[1] ]
 
-	if name == 'cmehw':
+	if image[0] == 'cmehw':
 		cmd.extend = ['cme-hw' ]
 		cmd.extend = ['-v', '/data:/data' ]
 		cmd.extend = ['--device=/dev/spidev0.0:/dev/spidev0.0' ]
@@ -253,6 +253,7 @@ def _launch_docker(image):
 		cmd.extend = [ image[0] + ':' + image[1] ]
 
 	# Run docker image (detached, -d) and collect container ID
+	logger.info("Launching module {0}".format(' '.join(cmd)))
 	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode()
 	
 	# Wait for the (detached) container to stop running
