@@ -164,11 +164,7 @@ def main(*args):
 		logger.info("Launching modules")
 
 		# remove any existing containers
-		containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
-
-		for container in containers:
-			if container:
-				subprocess.run(['docker', 'rm', container])
+		_stop_remove_containers()
 
 		# list images
 		cme = None
@@ -265,11 +261,24 @@ def _launch_docker(image):
 	logger.info("Waiting for {0} to terminate".format(ID))
 	subprocess.run(['docker', 'wait', ID ])  # <--- this should block while container runs!
 
-	logger.info("Module ID {0} terminated".format(ID))	
-	
+	logger.info("Module ID {0} terminated".format(ID))
+
 	# Remove the container
 	subprocess.run(['docker', 'rm', ID ])
 	logger.info("Removed container {0}".format(ID))
+
+	# If _any_ container stops (gets here), then
+	# stop all containers
+
+
+def _stop_remove_containers():
+	logger.info("Stopping and removing any module containers")
+	containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
+
+	for container in containers:
+		if container:
+			subprocess.run(['docker', 'stop', container ])
+			subprocess.run(['docker', 'rm', container ])
 
 
 def _parse_image(name, current_image, new_image):
