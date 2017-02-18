@@ -263,12 +263,8 @@ def _launch_docker(image):
 
 	logger.info("Module ID {0} terminated".format(ID))
 
-	# Remove the container
-	subprocess.run(['docker', 'rm', ID ])
-	logger.info("Removed container {0}".format(ID))
-
-	# If _any_ container stops (gets here), then
-	# stop all containers
+	# If _any_ container stops (gets here), then stop/remove all containers
+	_stop_remove_containers()
 
 
 def _stop_remove_containers():
