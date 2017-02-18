@@ -184,6 +184,7 @@ rm ${CMEINIT}
 pip install --no-index -f wheelhouse cmeinit
 rm -rf wheelhouse
 curl -sSo ${SETUP_SYSTEM}/cme-docker-fifo.sh # adds the docker FIFO script to Cme-init/
+chmod u+x cme-docker-fifo.sh
 popd
 echo "  ...done with Cme-init"
 

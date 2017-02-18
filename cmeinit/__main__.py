@@ -165,8 +165,10 @@ def main(*args):
 
 		# remove any existing containers
 		containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
+
 		for container in containers:
-			subprocess.run(['docker', 'rm', container])
+			if container:
+				subprocess.run(['docker', 'rm', container])
 
 		# list images
 		cme = None
@@ -175,12 +177,14 @@ def main(*args):
 		for image in images[1:]:
 			img = image.split()
 			cme = _parse_image('cme', cme, img)
-			cmdhw = _parse_image('cmehw', cmehw, img)
+			cmehw = _parse_image('cmehw', cmehw, img)
 
 		# only launch if we have both images
 		if cme and cmehw:
-			# launch the cme-docker-fifo (this call does not block)
-			subprocess.Popen([os.path.join(os.getcwd(), 'cme-docker-fifo.sh')])
+			# launch the cme-docker-fifo (this call should not block)
+			fifo = os.path.join(os.getcwd(), 'cme-docker-fifo.sh')
+			logger.info("Lauching {0}".format(fifo))
+			subprocess.Popen([fifo])
 
 			# launch Cme docker
 			t_cme = threading.Thread(target=_launch_docker, args=(cme))
@@ -258,12 +262,12 @@ def _launch_docker(image):
 	subprocess.run(['docker', 'rm', ID ])
 
 
-def _parse_image(name, current_image, new_image)
+def _parse_image(name, current_image, new_image):
 	if not new_image[0] == name:
 		return current_image
 
-	if not current_image or semver.match(new_img[1], '>=' + current_image[1]):
-		return [ new_image[0], new_img[1] ]
+	if not current_image or semver.match(new_image[1], '>=' + current_image[1]):
+		return [ new_image[0], new_image[1] ]
 
 	return current_image
 
