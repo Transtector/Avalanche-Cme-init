@@ -142,8 +142,8 @@ echo
 echo "  Adding SSH keys for Transtector GIT server access..."
 mkdir -p .ssh
 cd .ssh
-curl -sSo ${SETUP_SYSTEM}/id_rsa
-curl -sSo ${SETUP_SYSTEM}/id_rsa.pub
+curl -sSO ${SETUP_SYSTEM}/id_rsa
+curl -sSO ${SETUP_SYSTEM}/id_rsa.pub
 echo "  ...SSH keys added for CUSCSGIT01.smiths.net access"
 cd
 
@@ -154,7 +154,7 @@ echo
 echo "  Adding a certificate of authority for Transtector Docker registry..."
 mkdir -p /etc/docker/certs.d/cuscsgit01.smiths.net\:5000
 cd /etc/docker/certs.d/cuscsgit01.smiths.net\:5000
-curl -sSo ${SETUP_SYSTEM}/ca.crt
+curl -sSO ${SETUP_SYSTEM}/ca.crt
 echo "   ...CA added for CUSCSGIT01:5000 Docker registry access" 
 cd
 
@@ -164,7 +164,7 @@ cd
 echo
 echo "  Installing the cmeinit.service module..."
 cd /lib/systemd/system/
-curl -sSo ${SETUP_SYSTEM}/cmeinit.service
+curl -sSO ${SETUP_SYSTEM}/cmeinit.service
 systemctl daemon-reload
 systemctl enable cmeinit
 echo "  ...done with cmeinit.service"
@@ -178,12 +178,12 @@ mkdir Cme-init
 pushd Cme-init
 python -m venv cmeinit_venv
 source cmeinit_venv/bin/activate
-curl -sSo ${SETUP_SYSTEM}/${CMEINIT}
+curl -sSO ${SETUP_SYSTEM}/${CMEINIT}
 tar -xvzf ${CMEINIT}
 rm ${CMEINIT}
 pip install --no-index -f wheelhouse cmeinit
 rm -rf wheelhouse
-curl -sSo ${SETUP_SYSTEM}/cme-docker-fifo.sh # adds the docker FIFO script to Cme-init/
+curl -sSO ${SETUP_SYSTEM}/cme-docker-fifo.sh # adds the docker FIFO script to Cme-init/
 chmod u+x cme-docker-fifo.sh
 popd
 echo "  ...done with Cme-init"
@@ -195,7 +195,7 @@ mkdir Cme
 pushd Cme
 python -m venv cme_venv
 source cme_venv/bin/activate
-curl -sSo ${SETUP_SYSTEM}/${CMERECOVERY}
+curl -sSO ${SETUP_SYSTEM}/${CMERECOVERY}
 tar -xvzf ${CMERECOVERY}
 rm ${CMERECOVERY}
 pip install --no-index -f wheelhouse cme
