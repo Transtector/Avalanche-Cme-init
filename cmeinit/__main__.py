@@ -258,7 +258,7 @@ def _launch_docker(image):
 
 	# Run docker image (detached, -d) and collect container ID
 	logger.info("Launching module {0}".format(' '.join(cmd)))
-	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode()
+	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode().strip()
 	
 	# Wait for the (detached) container to stop running
 	logger.info("Launched {0}".format(cmd))
@@ -269,7 +269,7 @@ def _launch_docker(image):
 	
 	# Remove the container
 	subprocess.run(['docker', 'rm', ID ])
-	logger.info("Removed module container")
+	logger.info("Removed container {0}".format(ID))
 
 
 def _parse_image(name, current_image, new_image):
