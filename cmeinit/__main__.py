@@ -184,7 +184,7 @@ def main(*args):
 			# launch the cme-docker-fifo (this call should not block)
 			fifo = os.path.join(os.getcwd(), 'cme-docker-fifo.sh')
 			logger.info("Lauching {0}".format(fifo))
-			subprocess.Popen([fifo])
+			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
 			# launch Cme docker
 			t_cme = threading.Thread(target=_launch_docker, args=(cme, ))
@@ -200,6 +200,10 @@ def main(*args):
 			# wait for dockers to stop
 			t_cme.join()
 			t_cmehw.join()
+
+			if fifo_p:
+				logger.info("Terminating {0}".format(fifo))
+				fifo_p.terminate()
 
 			logger.warning("Application module(s) exiting")
 
