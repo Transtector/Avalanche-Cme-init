@@ -238,23 +238,23 @@ def _launch_docker(image):
 	cmd = ['docker', 'run', '-d', '--privileged', '--name']
 
 	if image[0] == 'cme':
-		cmd.extend = ['cme', '--net=host' ]
-		cmd.extend = ['-v', '/data:/data' ]
-		cmd.extend = ['-v', '/etc/network:/etc/network' ]
-		cmd.extend = ['-v', '/etc/ntp.conf:/etc/ntp.conf' ]
-		cmd.extend = ['-v', '/etc/localtime:/etc/localtime' ]
-		cmd.extend = ['-v', '/tmp/cmehostinput:/tmp/cmehostinput' ]
-		cmd.extend = ['-v', '/tmp/cmehostoutput:/tmp/cmehostoutput' ]
-		cmd.extend = ['-v', '/media/usb:/media/usb' ]
-		cmd.extend = [ image[0] + ':' + image[1] ]
+		cmd.extend(['cme', '--net=host' ])
+		cmd.extend(['-v', '/data:/data' ])
+		cmd.extend(['-v', '/etc/network:/etc/network' ])
+		cmd.extend(['-v', '/etc/ntp.conf:/etc/ntp.conf' ])
+		cmd.extend(['-v', '/etc/localtime:/etc/localtime' ])
+		cmd.extend(['-v', '/tmp/cmehostinput:/tmp/cmehostinput' ])
+		cmd.extend(['-v', '/tmp/cmehostoutput:/tmp/cmehostoutput' ])
+		cmd.extend(['-v', '/media/usb:/media/usb' ])
+		cmd.extend([ image[0] + ':' + image[1] ])
 
 	if image[0] == 'cmehw':
-		cmd.extend = ['cme-hw' ]
-		cmd.extend = ['-v', '/data:/data' ]
-		cmd.extend = ['--device=/dev/spidev0.0:/dev/spidev0.0' ]
-		cmd.extend = ['--device=/dev/spidev0.1:/dev/spidev0.1' ]
-		cmd.extend = ['--device=/dev/mem:/dev/mem' ]
-		cmd.extend = [ image[0] + ':' + image[1] ]
+		cmd.extend(['cme-hw' ])
+		cmd.extend(['-v', '/data:/data' ])
+		cmd.extend(['--device=/dev/spidev0.0:/dev/spidev0.0' ])
+		cmd.extend(['--device=/dev/spidev0.1:/dev/spidev0.1' ])
+		cmd.extend(['--device=/dev/mem:/dev/mem' ])
+		cmd.extend([ image[0] + ':' + image[1] ])
 
 	# Run docker image (detached, -d) and collect container ID
 	logger.info("Launching module {0}".format(' '.join(cmd)))
