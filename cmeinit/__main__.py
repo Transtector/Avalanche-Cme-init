@@ -8,6 +8,7 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 import semver
 
+from .common import Config
 from .common.Reboot import restart
 
 # Use Broadcom GPIO numbering
@@ -24,12 +25,10 @@ GPIO.setup(GPIO_STATUS_GREEN, GPIO.OUT, initial=True) # Start w/green
 GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edge
 
 
-# Set up some basic logging
-from .common import Config
 
 # delete BOOTLOG (start fresh every boot)
 try:
-	os.remove(Config.BOOTLOG)
+	os.remove(Config.LOGGING.BOOTLOG)
 except:
 	pass
 
@@ -37,7 +36,7 @@ logger = logging.getLogger("cmeinit")
 logger.setLevel(logging.DEBUG) # let handlers set real level
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 sh = logging.StreamHandler(sys.stdout)
-fh = logging.handlers.RotatingFileHandler(Config.BOOTLOG, maxBytes=(1024 * 10), backupCount=1)
+fh = logging.handlers.RotatingFileHandler(Config.LOGGING.BOOTLOG, maxBytes=(1024 * 10), backupCount=1)
 sh.setFormatter(formatter)
 fh.setFormatter(formatter)
 sh.setLevel(logging.DEBUG)
@@ -79,14 +78,14 @@ def reset(ch):
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RECOVERY seconds
-		if elapsed_seconds > Config.RESET_REBOOT_SECONDS:
+		if elapsed_seconds > Config.RECOVERY.RESET_REBOOT_SECONDS:
 			if not recovery_mode or factory_reset:
 				logger.info("Reset to recovery mode detected")
 				recovery_mode = True
 				GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after FACTORY RESET seconds - this will end our while loop
-		if elapsed_seconds > Config.RESET_RECOVERY_SECONDS:
+		if elapsed_seconds > Config.RECOVERY.RESET_RECOVERY_SECONDS:
 			logger.info("Reset to factory defaults detected")
 			recovery_mode = False
 			factory_reset = True
@@ -96,7 +95,7 @@ def reset(ch):
 		time.sleep(0.02)
 
 	# trigger a reboot on a delay so we have time to clean up
-	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.SETTINGS, recovery_file=Config.RECOVERY_FILE, logger=logger)
+	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.PATHS.SETTINGS, recovery_file=Config.PATHS.RECOVERY_FILE, logger=logger)
 	cleanup()
 
 # Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
@@ -130,10 +129,10 @@ def main(*args):
 	# bootup stages and go directly to the
 	# recovery startup stage.
 	recovery_mode = False
-	if os.path.isfile(Config.RECOVERY_FILE):
+	if os.path.isfile(Config.PATHS.RECOVERY_FILE):
 		logger.info("Recovery mode boot requested")
 		try:
-			os.remove(Config.RECOVERY_FILE)
+			os.remove(Config.PATHS.RECOVERY_FILE)
 		except:
 			pass
 		recovery_mode = True
