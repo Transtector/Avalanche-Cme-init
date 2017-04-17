@@ -118,7 +118,7 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 # signal sent by the system at shutdown (see common/Reboot.py).  Note
 # that the Cme-init program must signal the general "running" state
 # before the power off signal will be detected by the MCU.
-def cleanup():
+def cleanup(*args):
 
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
@@ -264,8 +264,11 @@ def main(*args):
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# This blocks until cme exits
-	subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
-
+	#subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
+	while True:
+		print("Snoozing...Z...z...z...")
+		time.sleep(1)
+	
 	# That's it we're done here - let main() call return
 	# in the __main__ program loop below.
 
