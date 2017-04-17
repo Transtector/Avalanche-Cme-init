@@ -118,7 +118,7 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 # signal sent by the system at shutdown (see common/Reboot.py).  Note
 # that the Cme-init program must signal the general "running" state
 # before the power off signal will be detected by the MCU.
-def cleanup(*args):
+def cleanup(signum=None, frame=None):
 
 	logger.info("CME system cleanup running")
 
