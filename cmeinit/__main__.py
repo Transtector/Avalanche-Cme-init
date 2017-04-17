@@ -47,7 +47,7 @@ logger.addHandler(fh)
 
 
 # RESET detection callback
-def reset(ch):
+def reset():
 
 	# Software edge debounce - check level after 50 ms
 	# and return if still HIGH (false trigger)
@@ -106,33 +106,36 @@ def reset(ch):
 	# trigger a reboot if we're not powering off
 	# there is a short delay on the reboot to let
 	# us clean up cleanly
-	if not power_off:
-		restart(recovery_mode=recovery_mode, factory_reset=factory_reset, logger=logger)
-
-	cleanup(power_off)
+	restart(power_off=power_off, recovery_mode=recovery_mode, factory_reset=factory_reset, logger=logger)
 
 # Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
 GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 
 
 
-# exit gracefully - set LED status RED/BLINKING
-# then clean up and exit
-def cleanup(power_off=False):
+# Exit gracefully - set LED status RED/BLINKING
+# then clean up and exit.  This is MAINLY called
+# indirectly by detecting the SIGTERM signal sent
+# by the system at shutdown (see common/Reboot.py).
+# However, it 
+def cleanup():
 
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
-	GPIO.output(GPIO_STANDBY, power_off) # shutdown - must be held for at least 100 ms
 
-	time.sleep(0.1)
+	if os.path.isfile(Config.PATHS.POWEROFF_FILE):
+		os.remove(Config.PATHS.POWEROFF_FILE)
+		GPIO.output(GPIO_STANDBY, True) # shutdown - must be held for at least 100 ms
+		time.sleep(0.1)
 
 	GPIO.cleanup()
 	
-	logger.info("CME system shutting down")
+	logger.info("CME system software exiting")
 	sys.exit(0)
 
-# SIGINT, SIGTERM signal handlers
-signal.signal(signal.SIGINT, cleanup)
+# SIGTERM signal handler - called at shutdown (see common/Reboot.py)
+# This lets us reboot/halt from other code modules without having
+# GPIO included in them.
 signal.signal(signal.SIGTERM, cleanup)
 
 
@@ -260,11 +263,8 @@ def main(*args):
 	# This blocks until cme exits
 	subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
 
-	# That's it - we're done here.  Don't power off in case we reached
-	# here when the recovery API is NOT working properly.  This should
-	# leave us in "blinky red" state (warranty repair).
-	cleanup()
-
+	# That's it we're done here - let main() call return
+	# in the __main__ program loop below.
 
 # Routine for threaded launch of docker image (image = [ name, tag ])
 def _launch_docker(image):
@@ -324,8 +324,6 @@ def _list_docker_images():
 
 	return { 'cmeapi': cmeapi, 'cmehw': cmehw, 'cmeweb': cmeweb }
 
-def _get_package_type():
-
 
 def _stop_remove_containers():
 	logger.info("Stopping and removing any module containers")
@@ -359,6 +357,7 @@ if __name__ == "__main__":
 	except Exception as e:
 		logger.info("Avalanche (Cme-init) has STOPPED on exception {0}".format(e))
 
-	cleanup()
+	finally:
+		cleanup()
 
 
