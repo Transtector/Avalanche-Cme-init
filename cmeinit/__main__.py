@@ -2,7 +2,7 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, logging.handlers, signal, os, sys, time, subprocess, threading
+import logging, logging.handlers, signal, os, sys, glob, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
@@ -113,11 +113,11 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 
 
 
-# Exit gracefully - set LED status RED/BLINKING
-# then clean up and exit.  This is MAINLY called
-# indirectly by detecting the SIGTERM signal sent
-# by the system at shutdown (see common/Reboot.py).
-# However, it 
+# Exit gracefully - set LED status RED/BLINKING then clean up and exit.  
+# cleanup() is primarily called indirectly by detecting the SIGTERM
+# signal sent by the system at shutdown (see common/Reboot.py).  Note
+# that the Cme-init program must signal the general "running" state
+# before the power off signal will be detected by the MCU.
 def cleanup():
 
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
@@ -125,11 +125,14 @@ def cleanup():
 
 	if os.path.isfile(Config.PATHS.POWEROFF_FILE):
 		os.remove(Config.PATHS.POWEROFF_FILE)
-		GPIO.output(GPIO_STANDBY, True) # shutdown - must be held for at least 100 ms
-		time.sleep(0.1)
+		
+		# shutdown - must be held for at least 150 ms
+		logger.info("CME system halt detected")
+		GPIO.output(GPIO_STANDBY, True)
+		time.sleep(0.15)
 
 	GPIO.cleanup()
-	
+
 	logger.info("CME system software exiting")
 	sys.exit(0)
 
