@@ -120,6 +120,8 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 # before the power off signal will be detected by the MCU.
 def cleanup(*args):
 
+	logger.info("CME system cleanup running")
+
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
 
@@ -132,9 +134,8 @@ def cleanup(*args):
 		time.sleep(0.15)
 
 	GPIO.cleanup()
-
 	logger.info("CME system software exiting")
-	sys.exit(0)
+
 
 # SIGTERM signal handler - called at shutdown (see common/Reboot.py)
 # This lets us reboot/halt from other code modules without having

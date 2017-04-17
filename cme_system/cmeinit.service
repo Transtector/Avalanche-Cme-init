@@ -8,6 +8,7 @@ Environment=VIRTUAL_ENV=/root/Cme-init/cmeinit_venv
 Environment=PATH=$VIRTUAL_ENV/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WorkingDirectory=/root/Cme-init
 ExecStart=/root/Cme-init/cmeinit_venv/bin/python -m cmeinit
+TimeoutStopSec=6
 
 [Install]
 WantedBy=multi-user.target
