@@ -7,47 +7,75 @@
 # This script requires some env variables to be setup in order to
 # retrieve the installation files and versioned Cme applications.
 
-# SETUP - provide a URL that can be used by curl
-# CMEINIT_VERSION - the version of the Cme-init program to install
-# CME_VERSION - the API layer version that will be installed for recovery mode
-
 echo
 echo "  This script is intended to set up a CME device with all system components."
 echo "  The CME device must be manually rebooted after the script runs.  The script"
-echo "  requires several environment variables be set in order to retireve the"
-echo "  installation files and versioned Cme application packages."
+echo "  allows several environment variables be set in order to retrieve the"
+echo "  installation files and versioned application packages."
 echo
-echo "  Prior to running this script, export these environment variables:"
+echo "  Prior to running this script, you can export these environment variables:"
+echo
+echo "    VERSION - give a default version used if package version is not set"
+echo "        $ export VERSION=1.0.0"
 echo
 echo "    SETUP - provide a URL that can be used by curl"
 echo "        $ export SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme"
 echo
-echo "    CMEINIT_VERSION - identify the Cme-init program version to install"
-echo "        $ export CMEINIT_VERSION=0.1.0"
+echo "    CME_INIT_VERSION - identify the Cme-init program version to install"
+echo "        $ export CME_INIT_VERSION=1.0.0"
 echo
-echo "    CME_RECOVERY_VERSION - identify the Cme program installed for recovery mode operation"
-echo "        $ export CME_RECOVERY_VERSION=0.1.0"
+echo "    CME_API_RECOVERY_VERSION - identify the Cme-api program installed for recovery mode operation"
+echo "        $ export CME_API_RECOVERY_VERSION=1.0.0"
 echo
-echo "    CME_VERSION - identify the application layer API program version"
-echo "        $ export CME_VERSION=0.1.0"
+echo "    CME_WEB_RECOVERY_VERSION - identify the Cme-web application installed for recovery mode operation"
+echo "        $ export CME_WEB_RECOVERY_VERSION=1.0.0"
 echo
-echo "    CMEHW_VERSION - identify the application layer hardware program version"
-echo "        $ export CMEHW_VERSION=0.1.0"
+echo "    CME_API_VERSION - identify the application layer API program version"
+echo "        $ export CMEAPI_VERSION=1.0.0"
+echo
+echo "    CME_HW_VERSION - identify the application layer hardware program version"
+echo "        $ export CME_HW_VERSION=1.0.0"
+echo
+echo "    CME_WEB_VERSION - identify the web application  version"
+echo "        $ export CME_WEB_VERSION=1.0.0"
 echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
 
-# you must do `export CMEINIT_VERSION=0.1.0`
-CMEINIT=1500-000-v${CMEINIT_VERSION}-SWARE-CME_INIT.tgz
+# SOFTWARE PART NUMBERS - these set by Transtector
+CME_INIT_PN=1500-004
+CME_API_PN=1500-005
+CME_HW_PN=1500-006
+CME_WEB_PN=1500-007
 
-# you must do `export CME_RECOVERY_VERSION=0.1.0`
-CMERECOVERY=1510-000-v${CME_RECOVERY_VERSION}-SWARE-CME_RECOVERY.tgz
+# Default version
+VERSION="${VERISON:-1.0.0}"
 
-# you must do `export CME_VERSION=0.1.0`
-CME=1520-000-v${CME_VERSION}-SWARE-CME_API.tgz
+# Set some default values
 
-# you must do `export CMEHW_VERSION=0.1.0`
-CMEHW=1530-000-v${CMEHW_VERSION}-SWARE-CME_HW.tgz
+# Download URL
+SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
+
+# Package versions
+CME_INIT_VERSION="${CME_INIT_VERSION:-$VERSION}"
+CME_API_VERSION="${CME_API_VERSION:-$VERSION}"
+CME_HW_VERSION="${CME_HW_VERSION:-$VERSION}"
+CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
+
+# Recovery versions
+CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
+CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
+
+
+# Package names
+CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
+CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API.tgz
+CME_HW=${CME_HW_PN}-v${CME_HW_VERSION}-SWARE-CME_HW.tgz
+CME_WEB=${CME_WEB_PN}-v${CME_WEB_VERSION}-SWARE-CME_WEB.tgz
+
+# Recovery packages
+CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
+CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 # to get the system setup files
 SETUP_SYSTEM=${SETUP}/cme_system
@@ -78,12 +106,12 @@ alias ls='ls $LS_OPTIONS'
 
 # Add some useful docker run functions
 
-# Interactively run the cme docker (arg1, arg2)
-#	arg1: image name:tag (e.g., cme:0.1.0)
+# Interactively run the cme-api docker (arg1, arg2)
+#	arg1: image name:tag (e.g., cmeapi:0.1.0)
 #	arg2: optional command to run in container
-#		instead of 'cme' (e.g., /bin/bash)
-docker-cme() {
-	docker run -it --rm --net=host --privileged --name cme \
+#		instead of 'cmeapi' (e.g., /bin/bash)
+docker-cmeapi() {
+	docker run -it --rm --net=host --privileged --name cme-api \
 		-v /data:/data -v /etc/network:/etc/network \
 		-v /etc/ntp.conf:/etc/ntp.conf \
 		-v /etc/localtime:/etc/localtime \
@@ -92,7 +120,7 @@ docker-cme() {
 		-v /media/usb:/media/usb $1 $2
 }
 
-# Runs the cmehw docker (arg1, arg2)
+# Runs the cme-hw docker (arg1, arg2)
 #	arg1: image name:tag (e.g., cmehw:0.1.0)
 #	arg2: optional command to run in containter
 #		instead of 'cmehw' (e.g., /bin/bash)
@@ -102,6 +130,14 @@ docker-cmehw() {
 		--device=/dev/spidev0.1:/dev/spidev0.1 \
 		--device=/dev/mem:/dev/mem \
 		-v /data:/data $1 $2
+}
+
+# Runs the cme-web docker (arg1, arg2)
+#	arg1: image name:tag (e.g., cmeweb:0.1.0)
+#	arg2: optional command to run in containter
+#		instead of '/bin/bash'
+docker-cmeweb() {
+	docker run -it --rm $1 $2
 }
 
 EOF
@@ -178,9 +214,9 @@ mkdir Cme-init
 pushd Cme-init
 python -m venv cmeinit_venv
 source cmeinit_venv/bin/activate
-curl -sSO ${SETUP_SYSTEM}/${CMEINIT}
-tar -xvzf ${CMEINIT}
-rm ${CMEINIT}
+curl -sSO ${SETUP_SYSTEM}/${CME_INIT}
+tar -xvzf ${CME_INIT}
+rm ${CME_INIT}
 pip install --no-index -f wheelhouse cmeinit
 rm -rf wheelhouse
 curl -sSO ${SETUP_SYSTEM}/cme-docker-fifo.sh # adds the docker FIFO script to Cme-init/
@@ -188,33 +224,53 @@ chmod u+x cme-docker-fifo.sh
 popd
 echo "  ...done with Cme-init"
 
+
 # Setup the Cme (recovery) API
 echo
-echo "  Setting up Cme (recovery)..."
-mkdir Cme
-pushd Cme
-python -m venv cme_venv
-source cme_venv/bin/activate
-curl -sSO ${SETUP_SYSTEM}/${CMERECOVERY}
-tar -xvzf ${CMERECOVERY}
-rm ${CMERECOVERY}
-pip install --no-index -f wheelhouse cme
+echo "  Setting up Cme-api (recovery)..."
+mkdir Cme-api
+pushd Cme-api
+python -m venv cmeapi_venv
+source cmeapi_venv/bin/activate
+curl -sSO ${SETUP_SYSTEM}/${CME_API_RECOVERY}
+tar -xvzf ${CME_API_RECOVERY}
+rm ${CME_API_RECOVERY}
+pip install --no-index -f wheelhouse cmeapi
 rm -rf wheelhouse
+popd
+
+
+# Setup the Cme (recovery) Web
+echo
+echo "  Setting up Cme-web (recovery)..."
+mkdir Cme-web
+pushd Cme-web
+curl -sSO ${SETUP_SYSTEM}/${CME_WEB_RECOVERY}
+tar -xvzf ${CME_WEB_RECOVERY}
+rm ${CME_WEB_RECOVERY}
 popd
 
 
 # Setup the Cme API docker
 echo
 echo "  Loading Cme API docker..."
-curl -sS ${SETUP}/${CME} | docker load
+curl -sS ${SETUP}/${CME_API} | docker load
 echo "  ...done loading Cme API docker"
 
 
 # Setup the Cme-hw docker
 echo
 echo "  Loading Cme-hw docker..."
-curl -sS ${SETUP}/${CMEHW} | docker load
+curl -sS ${SETUP}/${CME_HW} | docker load
 echo "  ...done loading Cme-hw docker"
+
+
+# Setup the Cme-web docker
+echo
+echo "  Loading Cme-web docker..."
+curl -sS ${SETUP}/${CME_WEB} | docker load
+echo "  ...done loading Cme-web docker"
+
 
 echo
 echo "  Note the network settings are currently:"

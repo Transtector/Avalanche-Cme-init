@@ -4,13 +4,16 @@
 # layer) distribution tarball that can be downloaded to a CME device
 # and installed.
 
-SRC=$(pwd)/Cme-init  # project source code
+CME_INIT_PN=1500-004
+
+SRC=$(pwd) # project source code
 SRCDIST=$(pwd)/srcdist # source copied here for building
 DIST=$(pwd)/dist # built code ends up here
 
 # Read the VERSION file to use in the created archive name
 VERSION=$(<${SRC}/VERSION)
-ARCHIVE=1500-000-v$VERSION-SWARE-CME_INIT.tgz
+
+PACKAGE=${CME_INIT_PN}-v${VERSION}-SWARE-CME_INIT.tgz
 
 # Point PIP env paths to wheelhouse
 export WHEELHOUSE=${DIST}/wheelhouse
@@ -43,7 +46,7 @@ rm -rf ${SRCDIST} # done w/srcdist
 # Now generate the archive of the wheels
 pushd ${DIST}
 
-tar -czvf ../${ARCHIVE} .
+tar -czvf ../${PACKAGE} .
 
 # Done with the built distribution
 popd
