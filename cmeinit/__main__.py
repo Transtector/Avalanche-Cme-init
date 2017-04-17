@@ -18,12 +18,13 @@ GPIO.setmode(GPIO.BCM)
 GPIO_STATUS_SOLID = 5 # Write 1/True for solid, 0/False for blinking
 GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
 GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
+GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
 # Setup the GPIO hardware and initialize the outputs
 GPIO.setup(GPIO_STATUS_SOLID, GPIO.OUT, initial=False) # Start w/blinking
 GPIO.setup(GPIO_STATUS_GREEN, GPIO.OUT, initial=True) # Start w/green
 GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edge
-
+GPIO.setup(GPIO_STANDBY, GPIO.OUT, initial=False) # Start w/power on
 
 
 # delete BOOTLOG (start fresh every boot)
@@ -69,34 +70,46 @@ def reset(ch):
 	# updated these Booleans (maybe)
 	recovery_mode = False
 	factory_reset = False
+	power_off = False
 
 	# Wait for reset button release and measure the time that takes.
 	# This loop stops if any of these:
 	# 	Reset button released (GPIO_N_RESET == GPIO.HIGH)
-	# 	Button held long enough to trigger factory reset
-	while GPIO.input(GPIO_N_RESET) == GPIO.LOW or not factory_reset:
+	# 	Button held long enough to trigger power off/standby
+	while GPIO.input(GPIO_N_RESET) == GPIO.LOW or not power_off:
 		elapsed_seconds = time.time() - reset_start_seconds
 
-		# blink red after RECOVERY seconds
+		# blink red after RESET_REBOOT_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_REBOOT_SECONDS:
-			if not recovery_mode or factory_reset:
+			if not recovery_mode:
 				logger.info("Reset to recovery mode detected")
 				recovery_mode = True
 				GPIO.output(GPIO_STATUS_GREEN, False)
 
-		# solid red after FACTORY RESET seconds - this will end our while loop
+		# solid red after RESET_RECOVERY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_RECOVERY_SECONDS:
-			logger.info("Reset to factory defaults detected")
+			if not factory_reset:
+				logger.info("Reset to factory defaults detected")
+				factory_reset = True
+				GPIO.output(GPIO_STATUS_SOLID, True)
+
+		# power off/standby after RESET_FACTORY_SECONDS
+		if elapsed_seconds > Config.RECOVERY.RESET_FACTORY_SECONDS:
+			logger.info("Power off/standby mode detected")
+			power_off = True
 			recovery_mode = False
-			factory_reset = True
-			GPIO.output(GPIO_STATUS_SOLID, True)
+			factory_reset = False
 
 		# sleep just a bit
 		time.sleep(0.02)
 
-	# trigger a reboot on a delay so we have time to clean up
-	restart(delay=5, recovery_mode=recovery_mode, factory_reset=factory_reset, settings_file=Config.PATHS.SETTINGS, recovery_file=Config.PATHS.RECOVERY_FILE, logger=logger)
-	cleanup()
+	# trigger a reboot if we're not powering off
+	# there is a short delay on the reboot to let
+	# us clean up cleanly
+	if not power_off:
+		restart(recovery_mode=recovery_mode, factory_reset=factory_reset, logger=logger)
+
+	cleanup(power_off)
 
 # Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
 GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
@@ -105,10 +118,16 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 
 # exit gracefully - set LED status RED/BLINKING
 # then clean up and exit
-def cleanup(*args):
+def cleanup(power_off=False):
+
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
+	GPIO.output(GPIO_STANDBY, power_off) # shutdown - must be held for at least 100 ms
+
+	time.sleep(0.1)
+
 	GPIO.cleanup()
+	
 	logger.info("CME system shutting down")
 	sys.exit(0)
 
@@ -144,12 +163,28 @@ def main(*args):
 	#
 	# If not booting to recovery mode, this stage
 	# looks at the software updates folder and
-	# maniuplates the installed docker images if
+	# manipulates the installed docker images if
 	# images are found there.
 	if not recovery_mode:
 		logger.info("Checking for updates")
 
-		logger.info("No updates found")
+		update_dir = Config.PATHS.UPDATE
+		update_glob = Config.UPDATES.UPDATE_GLOB
+
+		# list pending update packages
+		packages = glob.glob(os.path.join(update_dir, update_glob))
+
+		updates_found = False
+
+		if len(packages) > 0:
+
+			print("This is where packages loaded to docker...")				
+
+
+		
+		if not updates_found:
+			logger.info("No updates found")
+
 	else:
 		logger.info("Update stage bypassed (Recovery mode)")
 
@@ -165,36 +200,39 @@ def main(*args):
 		# remove any existing containers
 		_stop_remove_containers()
 
-		# list images
-		cme = None
-		cmehw = None
-		images = subprocess.run(['docker', 'images'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
-		for image in images[1:]:
-			img = image.split()
-			cme = _parse_image('cme', cme, img)
-			cmehw = _parse_image('cmehw', cmehw, img)
+		# get docker images
+		docker_images = _list_docker_images()
 
-		# only launch if we have both images
-		if cme and cmehw:
+		cmeapi = docker_images.get('cmeapi')
+		cmehw = docker_images.get('cmehw')
+		cmeweb = docker_images.get('cmeweb')
+
+		# only launch if we have all images
+		if cmeapi and cmehw and cmeweb:
+
 			# launch the cme-docker-fifo (this call should not block)
 			fifo = os.path.join(os.getcwd(), 'cme-docker-fifo.sh')
 			logger.info("Lauching {0}".format(fifo))
 			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
-			# launch Cme docker
-			t_cme = threading.Thread(target=_launch_docker, args=(cme, ))
-			t_cme.start()
+			# create thread and launch each layer
+			t_cmeapi = threading.Thread(target=_launch_docker, args=(cmeapi, ))
+			t_cmeapi.start()
 
 			t_cmehw = threading.Thread(target=_launch_docker, args=(cmehw, ))
 			t_cmehw.start()
+
+			t_cmeweb = threading.Thread(target=_launch_docker, args=(cmeweb, ))
+			t_cmeweb.start()
 
 			# set the pretty green light
 			GPIO.output(GPIO_STATUS_GREEN, True)
 			GPIO.output(GPIO_STATUS_SOLID, True)
 
 			# wait for dockers to stop
-			t_cme.join()
+			t_cmeapi.join()
 			t_cmehw.join()
+			t_cmeweb.join()
 
 			if fifo_p:
 				logger.info("Terminating {0}".format(fifo))
@@ -220,9 +258,11 @@ def main(*args):
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# This blocks until cme exits
-	subprocess.run(["cd /root/Cme; source cme_venv/bin/activate; python -m cme"], shell=True, executable='/bin/bash')
+	subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
 
-	# That's it - we're done here.
+	# That's it - we're done here.  Don't power off in case we reached
+	# here when the recovery API is NOT working properly.  This should
+	# leave us in "blinky red" state (warranty repair).
 	cleanup()
 
 
@@ -232,8 +272,8 @@ def _launch_docker(image):
 	# common command line
 	cmd = ['docker', 'run', '-d', '--privileged', '--name']
 
-	if image[0] == 'cme':
-		cmd.extend(['cme', '--net=host' ])
+	if image[0] == 'cmeapi':
+		cmd.extend(['cme-api', '--net=host' ])
 		cmd.extend(['-v', '/data:/data' ])
 		cmd.extend(['-v', '/etc/network:/etc/network' ])
 		cmd.extend(['-v', '/etc/ntp.conf:/etc/ntp.conf' ])
@@ -251,6 +291,10 @@ def _launch_docker(image):
 		cmd.extend(['--device=/dev/mem:/dev/mem' ])
 		cmd.extend([ image[0] + ':' + image[1] ])
 
+	if image[0] == 'cmeweb':
+		cmd.extend(['cme-web' ])
+		cmd.extend([ image[0] + ':' + image[1] ])
+
 	# Run docker image (detached, -d) and collect container ID
 	logger.info("Launching module {0}".format(' '.join(cmd)))
 	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode().strip()
@@ -264,6 +308,23 @@ def _launch_docker(image):
 
 	# If _any_ container stops (gets here), then stop/remove all containers
 	_stop_remove_containers()
+
+
+def _list_docker_images():
+	cmeapi = None
+	cmehw = None
+	cmeweb = None
+
+	images = subprocess.run(['docker', 'images'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
+	for image in images[1:]:
+		img = image.split()
+		cmeapi = _parse_image('cmeapi', cmeapi, img)
+		cmehw = _parse_image('cmehw', cmehw, img)
+		cmeweb = _parse_image('cmeweb', cmeweb, img)
+
+	return { 'cmeapi': cmeapi, 'cmehw': cmehw, 'cmeweb': cmeweb }
+
+def _get_package_type():
 
 
 def _stop_remove_containers():
