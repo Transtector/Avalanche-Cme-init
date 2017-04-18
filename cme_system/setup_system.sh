@@ -56,26 +56,34 @@ VERSION="${VERISON:-1.0.0}"
 # Download URL
 SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 
-# Package versions
+# CME Base Packages - these are essentially the base software
+# that get installed to Cme device and will form the "recovery
+# mode" base layer.  The application layer packages cannot
+# easily be used to upgrade these packages on the end user equipment.
 CME_INIT_VERSION="${CME_INIT_VERSION:-$VERSION}"
+CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
+CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
+
+# CME Base Packages - package filenames
+CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
+CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
+CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
+
+
+# CME Application Layers - these are just like the packages above but
+# have been wrapped with a Docker container and made into a Docker image
+# that can be loaded directly into the target device.  Note the "_pkg.tgz"
+# suffix to distinguish them from the base packages.
 CME_API_VERSION="${CME_API_VERSION:-$VERSION}"
 CME_HW_VERSION="${CME_HW_VERSION:-$VERSION}"
 CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
 
-# Recovery versions
-CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
-CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
+# Application layers - package filenames
+CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API_pkg.tgz
+CME_HW=${CME_HW_PN}-v${CME_HW_VERSION}-SWARE-CME_HW_pkg.tgz
+CME_WEB=${CME_WEB_PN}-v${CME_WEB_VERSION}-SWARE-CME_WEB_pkg.tgz
 
 
-# Package names
-CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
-CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API.tgz
-CME_HW=${CME_HW_PN}-v${CME_HW_VERSION}-SWARE-CME_HW.tgz
-CME_WEB=${CME_WEB_PN}-v${CME_WEB_VERSION}-SWARE-CME_WEB.tgz
-
-# Recovery packages
-CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
-CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 # to get the system setup files
 SETUP_SYSTEM=${SETUP}/cme_system
@@ -225,7 +233,7 @@ popd
 echo "  ...done with Cme-init"
 
 
-# Setup the Cme (recovery) API
+# Setup the Cme-api layer (recovery)
 echo
 echo "  Setting up Cme-api (recovery)..."
 mkdir Cme-api
@@ -240,11 +248,11 @@ rm -rf wheelhouse
 popd
 
 
-# Setup the Cme (recovery) Web
+# Setup the Cme-web application (recovery)
 echo
 echo "  Setting up Cme-web (recovery)..."
-mkdir Cme-web
-pushd Cme-web
+mkdir /www
+pushd /www
 curl -sSO ${SETUP_SYSTEM}/${CME_WEB_RECOVERY}
 tar -xvzf ${CME_WEB_RECOVERY}
 rm ${CME_WEB_RECOVERY}

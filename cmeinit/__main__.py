@@ -236,24 +236,25 @@ def main(*args):
 			logger.info("Lauching {0}".format(fifo))
 			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
-			# create thread and launch each layer
+			# Create thread and launch each container; Note the cmeweb data
+			# volume container must be run first.
+			t_cmeweb = threading.Thread(target=_launch_docker, args=(cmeweb, ))
+			t_cmeweb.start()
+
 			t_cmeapi = threading.Thread(target=_launch_docker, args=(cmeapi, ))
 			t_cmeapi.start()
 
 			t_cmehw = threading.Thread(target=_launch_docker, args=(cmehw, ))
 			t_cmehw.start()
 
-			t_cmeweb = threading.Thread(target=_launch_docker, args=(cmeweb, ))
-			t_cmeweb.start()
-
 			# set the pretty green light
 			GPIO.output(GPIO_STATUS_GREEN, True)
 			GPIO.output(GPIO_STATUS_SOLID, True)
 
 			# wait for dockers to stop
+			t_cmeweb.join()
 			t_cmeapi.join()
 			t_cmehw.join()
-			t_cmeweb.join()
 
 			if fifo_p:
 				logger.info("Terminating {0}".format(fifo))
@@ -283,13 +284,10 @@ def main(*args):
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# This blocks until cme exits
-	#subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
-	while not SHUTDOWN_FLAG:
-		print("Snoozing...Z...z...z...")
-		time.sleep(1)
-	
+	subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
+
 	# That's it we're done here - let main() call return
-	# in the __main__ program loop below.
+	# to the __main__ program loop below and exit cleanly.
 
 # Routine for threaded launch of docker image (image = [ name, tag ])
 def _launch_docker(image):
@@ -300,6 +298,7 @@ def _launch_docker(image):
 	if image[0] == 'cmeapi':
 		cmd.extend(['cme-api', '--net=host' ])
 		cmd.extend(['-v', '/data:/data' ])
+		cmd.extend(['--volumes-from', 'cme-web'])
 		cmd.extend(['-v', '/etc/network:/etc/network' ])
 		cmd.extend(['-v', '/etc/ntp.conf:/etc/ntp.conf' ])
 		cmd.extend(['-v', '/etc/localtime:/etc/localtime' ])
@@ -347,6 +346,7 @@ def _list_docker_images():
 		cmehw = _parse_image('cmehw', cmehw, img)
 		cmeweb = _parse_image('cmeweb', cmeweb, img)
 
+	# each image returned as [ <image_name>, <image_tag> ]
 	return { 'cmeapi': cmeapi, 'cmehw': cmehw, 'cmeweb': cmeweb }
 
 
@@ -357,7 +357,7 @@ def _stop_remove_containers():
 	for container in containers:
 		if container:
 			subprocess.run(['docker', 'stop', container ])
-			subprocess.run(['docker', 'rm', container ])
+			subprocess.run(['docker', 'rm', '-v', container ])
 
 
 def _parse_image(name, current_image, new_image):
