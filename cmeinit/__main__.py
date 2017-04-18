@@ -11,6 +11,8 @@ import semver
 from .common import Config
 from .common.Reboot import restart
 
+SHUTDOWN_FLAG = False # set by the cleanup callback on SIGTERM
+
 # Use Broadcom GPIO numbering
 GPIO.setmode(GPIO.BCM)
 
@@ -82,20 +84,20 @@ def reset():
 		# blink red after RESET_REBOOT_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_REBOOT_SECONDS:
 			if not recovery_mode:
-				logger.info("Reset to recovery mode detected")
+				logger.info("Reset to recovery mode signal detected")
 				recovery_mode = True
 				GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after RESET_RECOVERY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_RECOVERY_SECONDS:
 			if not factory_reset:
-				logger.info("Reset to factory defaults detected")
+				logger.info("Reset factory defaults signal detected")
 				factory_reset = True
 				GPIO.output(GPIO_STATUS_SOLID, True)
 
 		# power off/standby after RESET_FACTORY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_FACTORY_SECONDS:
-			logger.info("Power off/standby mode detected")
+			logger.info("Reset power off/standby signal detected")
 			power_off = True
 			recovery_mode = False
 			factory_reset = False
@@ -120,7 +122,13 @@ GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 # before the power off signal will be detected by the MCU.
 def cleanup(signum=None, frame=None):
 
-	logger.info("CME system cleanup running")
+	global SHUTDOWN_FLAG
+	if SHUTDOWN_FLAG: # we've already received SIGTERM and set this
+		return
+
+	SHUTDOWN_FLAG = True
+
+	logger.info("CME system cleanup")
 
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
@@ -129,18 +137,20 @@ def cleanup(signum=None, frame=None):
 		os.remove(Config.PATHS.POWEROFF_FILE)
 		
 		# shutdown - must be held for at least 150 ms
-		logger.info("CME system halt detected")
+		logger.info("CME sending system halt signal")
 		GPIO.output(GPIO_STANDBY, True)
 		time.sleep(0.15)
 
 	GPIO.cleanup()
 	logger.info("CME system software exiting")
+	sys.exit(0)
 
 
 # SIGTERM signal handler - called at shutdown (see common/Reboot.py)
 # This lets us reboot/halt from other code modules without having
 # GPIO included in them.
 signal.signal(signal.SIGTERM, cleanup)
+signal.signal(signal.SIGHUP, cleanup)
 
 
 # Main program entry
@@ -260,13 +270,17 @@ def main(*args):
 	#
 	# If we've made it here, then the application layer has stopped
 	# and we need to launch the recovery mode API layer.
+	global SHUTDOWN_FLAG
+	if SHUTDOWN_FLAG:
+		return # cleanup() has set the shutdown flag - nothing more to do
+
 	logger.info("Launching recovery module")
 	GPIO.output(GPIO_STATUS_GREEN, False)
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# This blocks until cme exits
 	#subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')
-	while True:
+	while not SHUTDOWN_FLAG:
 		print("Snoozing...Z...z...z...")
 		time.sleep(1)
 	
