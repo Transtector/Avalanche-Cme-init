@@ -49,7 +49,7 @@ logger.addHandler(fh)
 
 
 # RESET detection callback
-def reset():
+def reset(ch):
 
 	# Software edge debounce - check level after 50 ms
 	# and return if still HIGH (false trigger)
