@@ -133,6 +133,9 @@ def cleanup(signum=None, frame=None):
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
 
+	# stop/remove any running images (sends SIGTERM)
+	_stop_remove_containers()
+
 	if os.path.isfile(Config.PATHS.POWEROFF_FILE):
 		os.remove(Config.PATHS.POWEROFF_FILE)
 		
