@@ -78,7 +78,8 @@ def reset(ch):
 	# This loop stops if any of these:
 	# 	Reset button released (GPIO_N_RESET == GPIO.HIGH)
 	# 	Button held long enough to trigger power off/standby
-	while GPIO.input(GPIO_N_RESET) == GPIO.LOW or not power_off:
+	while GPIO.input(GPIO_N_RESET) == GPIO.LOW and not power_off:
+
 		elapsed_seconds = time.time() - reset_start_seconds
 
 		# blink red after RESET_REBOOT_SECONDS
@@ -98,6 +99,7 @@ def reset(ch):
 		# power off/standby after RESET_FACTORY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_FACTORY_SECONDS:
 			logger.info("Reset power off/standby signal detected")
+
 			power_off = True
 			recovery_mode = False
 			factory_reset = False
