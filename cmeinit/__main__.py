@@ -146,7 +146,6 @@ def cleanup(signum=None, frame=None):
 
 	GPIO.cleanup()
 	logger.info("CME system software exiting")
-	sys.exit(0)
 
 
 # SIGTERM signal handler - called at shutdown (see common/Reboot.py)
