@@ -120,6 +120,7 @@ alias ls='ls $LS_OPTIONS'
 #		instead of 'cmeapi' (e.g., /bin/bash)
 docker-cmeapi() {
 	docker run -it --rm --net=host --privileged --name cme-api \
+		--volumes-from cme-web \
 		-v /data:/data -v /etc/network:/etc/network \
 		-v /etc/ntp.conf:/etc/ntp.conf \
 		-v /etc/localtime:/etc/localtime \
