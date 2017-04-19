@@ -72,16 +72,16 @@ CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 # CME Application Layers - these are just like the packages above but
 # have been wrapped with a Docker container and made into a Docker image
-# that can be loaded directly into the target device.  Note the "_pkg.tgz"
+# that can be loaded directly into the target device.  Note the ".pkg.tgz"
 # suffix to distinguish them from the base packages.
 CME_API_VERSION="${CME_API_VERSION:-$VERSION}"
 CME_HW_VERSION="${CME_HW_VERSION:-$VERSION}"
 CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
 
 # Application layers - package filenames
-CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API_pkg.tgz
-CME_HW=${CME_HW_PN}-v${CME_HW_VERSION}-SWARE-CME_HW_pkg.tgz
-CME_WEB=${CME_WEB_PN}-v${CME_WEB_VERSION}-SWARE-CME_WEB_pkg.tgz
+CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API.pkg.tgz
+CME_HW=${CME_HW_PN}-v${CME_HW_VERSION}-SWARE-CME_HW.pkg.tgz
+CME_WEB=${CME_WEB_PN}-v${CME_WEB_VERSION}-SWARE-CME_WEB.pkg.tgz
 
 
 
@@ -138,14 +138,6 @@ docker-cmehw() {
 		--device=/dev/spidev0.1:/dev/spidev0.1 \
 		--device=/dev/mem:/dev/mem \
 		-v /data:/data $1 $2
-}
-
-# Runs the cme-web docker (arg1, arg2)
-#	arg1: image name:tag (e.g., cmeweb:0.1.0)
-#	arg2: optional command to run in containter
-#		instead of '/bin/bash'
-docker-cmeweb() {
-	docker run -it --rm $1 $2
 }
 
 EOF

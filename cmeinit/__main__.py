@@ -152,7 +152,9 @@ def cleanup(signum=None, frame=None):
 
 # SIGTERM signal handler - called at shutdown (see common/Reboot.py)
 # This lets us reboot/halt from other code modules without having
-# GPIO included in them.
+# GPIO included in them. Note that there are some issues with
+# SIGTERM under systemd and therefore we must also listen for
+# SIGHUP for cleanup as well.
 signal.signal(signal.SIGTERM, cleanup)
 signal.signal(signal.SIGHUP, cleanup)
 
@@ -199,7 +201,7 @@ def main(*args):
 
 		if len(packages) > 0:
 
-			print("This is where packages loaded to docker...")				
+			print("This is where packages get loaded to docker...")				
 
 
 		
@@ -224,23 +226,19 @@ def main(*args):
 		# get docker images
 		docker_images = _list_docker_images()
 
+		cmeweb = docker_images.get('cmeweb')
 		cmeapi = docker_images.get('cmeapi')
 		cmehw = docker_images.get('cmehw')
-		cmeweb = docker_images.get('cmeweb')
 
 		# only launch if we have all images
-		if cmeapi and cmehw and cmeweb:
+		if cmeweb and cmeapi and cmehw:
 
 			# launch the cme-docker-fifo (this call should not block)
 			fifo = os.path.join(os.getcwd(), 'cme-docker-fifo.sh')
 			logger.info("Lauching {0}".format(fifo))
 			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
-			# Create thread and launch each container; Note the cmeweb data
-			# volume container must be run first.
-			t_cmeweb = threading.Thread(target=_launch_docker, args=(cmeweb, ))
-			t_cmeweb.start()
-
+			# Create threads and launch docker containers
 			t_cmeapi = threading.Thread(target=_launch_docker, args=(cmeapi, ))
 			t_cmeapi.start()
 
@@ -252,7 +250,6 @@ def main(*args):
 			GPIO.output(GPIO_STATUS_SOLID, True)
 
 			# wait for dockers to stop
-			t_cmeweb.join()
 			t_cmeapi.join()
 			t_cmehw.join()
 
@@ -264,8 +261,6 @@ def main(*args):
 
 		else:
 			logger.warning("Application modules not found")
-
-
 	else:
 		logger.info("Module launch stage bypassed (Recovery mode)")
 
@@ -322,7 +317,11 @@ def _launch_docker(image):
 	# Run docker image (detached, -d) and collect container ID
 	logger.info("Launching module {0}".format(' '.join(cmd)))
 	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode().strip()
-	
+
+	# cmeweb is just a volume container - run it and return
+	# without worrying about watching the process.
+	if image[0] == 'cmeweb': return
+
 	# Wait for the (detached) container to stop running
 	logger.info("Launched {0}".format(cmd))
 	logger.info("Waiting for {0} to terminate".format(ID))
@@ -357,7 +356,7 @@ def _stop_remove_containers():
 	for container in containers:
 		if container:
 			subprocess.run(['docker', 'stop', container ])
-			subprocess.run(['docker', 'rm', '-v', container ])
+			subprocess.run(['docker', 'rm', container ]) # note volumes (/www) are not deleted
 
 
 def _parse_image(name, current_image, new_image):
