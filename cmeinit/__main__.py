@@ -194,18 +194,20 @@ def main(*args):
 		update_dir = Config.PATHS.UPDATE
 		update_glob = Config.UPDATES.UPDATE_GLOB
 
-		# list pending update packages
 		packages = glob.glob(os.path.join(update_dir, update_glob))
 
-		updates_found = False
-
-		if len(packages) > 0:
-
-			print("This is where packages get loaded to docker...")				
-
-
+		for package in packages:
+			pkg_name = os.path.basename(package)
+			logger.info("Update found: {0}".format(pkg_name))
+			error_msg = _load_docker(package)
+			if error_msg:
+				logger.error("Error loading update: {0}".format(error_msg))
+			else:
+				logger.info("Update loaded: {0}".format(pkg_name))
+			# remove update package file regardless of success or failure
+			os.remove(package)
 		
-		if not updates_found:
+		if not packages:
 			logger.info("No updates found")
 
 	else:
@@ -284,6 +286,7 @@ def main(*args):
 	# That's it we're done here - let main() call return
 	# to the __main__ program loop below and exit cleanly.
 
+
 # Routine for threaded launch of docker image (image = [ name, tag ])
 def _launch_docker(image):
 
@@ -333,6 +336,13 @@ def _launch_docker(image):
 	_stop_remove_containers()
 
 
+# Load a docker image from update folder - remove package file on success
+def _load_docker(package):
+	if not os.path.isfile(package): return
+
+	p_load = subprocess.run(['docker', 'load'], stdin=open(package), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	return p_load.stderr.decode()
+
 def _list_docker_images():
 	cmeapi = None
 	cmehw = None
@@ -361,6 +371,11 @@ def _stop_remove_containers():
 
 def _parse_image(name, current_image, new_image):
 	if not new_image[0] == name:
+		return current_image
+
+	try:
+		semver.parse(new_image[1])
+	except ValueError as e:
 		return current_image
 
 	if not current_image or semver.match(new_image[1], '>=' + current_image[1]):
