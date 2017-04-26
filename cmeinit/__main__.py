@@ -29,12 +29,19 @@ GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edg
 GPIO.setup(GPIO_STANDBY, GPIO.OUT, initial=False) # Start w/power on
 
 
-# delete BOOTLOG (start fresh every boot)
+# delete any previous uploaded files (that were not installed)
+for f in glob.glob(Config.PATHS.UPLOADS + '/*'):
+	try:
+    	os.remove(f)
+    except:
+    	pass
+
+
+# Configure BOOTLOG and delete previous (start fresh every boot)
 try:
 	os.remove(Config.LOGGING.BOOTLOG)
 except:
 	pass
-
 logger = logging.getLogger("cmeinit")
 logger.setLevel(logging.DEBUG) # let handlers set real level
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
@@ -347,6 +354,8 @@ def _load_docker(package):
 	p_load = subprocess.run(['docker', 'load'], stdin=open(package), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	return p_load.stderr.decode()
 
+
+# List available docker images
 def _list_docker_images():
 	cmeapi = None
 	cmehw = None
@@ -363,6 +372,7 @@ def _list_docker_images():
 	return { 'cmeapi': cmeapi, 'cmehw': cmehw, 'cmeweb': cmeweb }
 
 
+# Stop and remove application docker containers
 def _stop_remove_containers():
 	logger.info("Stopping and removing any module containers")
 	containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
@@ -373,6 +383,7 @@ def _stop_remove_containers():
 			subprocess.run(['docker', 'rm', container ]) # note volumes (/www) are not deleted
 
 
+# Filter a docker image by type and version tag; newest/greatest version is used
 def _parse_image(name, current_image, new_image):
 	if not new_image[0] == name:
 		return current_image
