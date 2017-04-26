@@ -240,6 +240,9 @@ def main(*args):
 			logger.info("Lauching {0}".format(fifo))
 			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
+			# launch Cme-web, but don't wait (it's just a volume container)
+			_launch_docker(cmeweb)
+
 			# Create threads and launch docker containers
 			t_cmeapi = threading.Thread(target=_launch_docker, args=(cmeapi, ))
 			t_cmeapi.start()
@@ -336,9 +339,10 @@ def _launch_docker(image):
 	_stop_remove_containers()
 
 
-# Load a docker image from update folder - remove package file on success
+# Load a docker image from update folder 
 def _load_docker(package):
-	if not os.path.isfile(package): return
+	if not os.path.isfile(package):
+		return "{} is not a valid package".format(package)
 
 	p_load = subprocess.run(['docker', 'load'], stdin=open(package), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	return p_load.stderr.decode()
