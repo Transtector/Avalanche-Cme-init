@@ -17,6 +17,8 @@ if [[ ! -p $OUT ]]; then
 	mkfifo $OUT
 fi
 
+cleanup
+
 while true
 do
 	if read line <$IN; then
