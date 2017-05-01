@@ -107,6 +107,35 @@ export LS_OPTIONS='--color=auto'
 eval "`dircolors`"
 alias ls='ls $LS_OPTIONS'
 
+# Add GPIO support
+export GPIO_STATUS_SOLID=5
+export GPIO_STATUS_GREEN=6
+export GPIO_STANDBY=19
+
+# Set STATUS solid/blink
+gpio_status_solid() {
+        echo $GPIO_STATUS_SOLID > /sys/class/gpio/export
+        echo "out" > /sys/class/gpio/gpio$GPIO_STATUS_SOLID/direction
+        echo $1 > /sys/class/gpio/gpio$GPIO_STATUS_SOLID/value
+}
+
+# Set STATUS green/red
+gpio_status_green(){
+        echo $GPIO_STATUS_GREEN > /sys/class/gpio/export
+        echo "out" > /sys/class/gpio/gpio$GPIO_STATUS_GREEN/direction
+        echo $1 > /sys/class/gpio/gpio$GPIO_STATUS_GREEN/value
+}
+
+# Set STANDBY
+gpio_standby() {
+        gpio_status_solid "0"
+        gpio_status_green "0"
+        echo $GPIO_STANDBY > /sys/class/gpio/export
+        echo "out" > /sys/class/gpio/gpio$GPIO_STANDBY/direction
+        echo "1" > /sys/class/gpio/gpio$GPIO_STANDBY/value
+}
+
+
 # Add some useful docker run functions
 
 # Interactively run the cme-api docker (arg1, arg2)
