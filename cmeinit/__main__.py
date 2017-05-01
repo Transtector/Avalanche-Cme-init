@@ -32,9 +32,9 @@ GPIO.setup(GPIO_STANDBY, GPIO.OUT, initial=False) # Start w/power on
 # delete any previous uploaded files (that were not installed)
 for f in glob.glob(Config.PATHS.UPLOADS + '/*'):
 	try:
-    	os.remove(f)
-    except:
-    	pass
+		os.remove(f)
+	except:
+		pass
 
 
 # Configure BOOTLOG and delete previous (start fresh every boot)
