@@ -1,6 +1,7 @@
 __pycache__
 *.pyc
 ._*
+*.tgz
 *_venv
 
 # built wheels
