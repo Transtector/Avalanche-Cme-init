@@ -46,7 +46,7 @@ rm -rf ${SRCDIST} # done w/srcdist
 # Now generate the archive of the wheels
 pushd ${DIST}
 
-tar -czvf ../${PACKAGE} .
+tar -czvf ../build/${PACKAGE} .
 
 # Done with the built distribution
 popd
