@@ -16,28 +16,20 @@ echo
 echo "  Prior to running this script, you can export these environment variables:"
 echo
 echo "    VERSION - give a default version used if package version is not set"
-echo "        $ export VERSION=1.0.0"
+echo "        default: 1.0.0"
 echo
 echo "    SETUP - provide a URL that can be used by curl"
-echo "        $ export SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme"
+echo "        default: SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme"
 echo
 echo "    CME_INIT_VERSION - identify the Cme-init program version to install"
-echo "        $ export CME_INIT_VERSION=1.0.0"
 echo
 echo "    CME_API_RECOVERY_VERSION - identify the Cme-api program installed for recovery mode operation"
-echo "        $ export CME_API_RECOVERY_VERSION=1.0.0"
-echo
+echo "    CME_HW_RECOVERY_VERSION - identify the Cme-hw program installed for recovery mode operation"
 echo "    CME_WEB_RECOVERY_VERSION - identify the Cme-web application installed for recovery mode operation"
-echo "        $ export CME_WEB_RECOVERY_VERSION=1.0.0"
 echo
 echo "    CME_API_VERSION - identify the application layer API program version"
-echo "        $ export CMEAPI_VERSION=1.0.0"
-echo
 echo "    CME_HW_VERSION - identify the application layer hardware program version"
-echo "        $ export CME_HW_VERSION=1.0.0"
-echo
 echo "    CME_WEB_VERSION - identify the web application  version"
-echo "        $ export CME_WEB_VERSION=1.0.0"
 echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
@@ -62,11 +54,13 @@ SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 # easily be used to upgrade these packages on the end user equipment.
 CME_INIT_VERSION="${CME_INIT_VERSION:-$VERSION}"
 CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
+CME_HW_RECOVERY_VERSION="${CME_HW_RECOVERY_VERSION:-$VERSION}"
 CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
 
 # CME Base Packages - package filenames
 CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
 CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
+CME_HW_RECOVERY=${CME_HW_PN}-v${CME_HW_RECOVERY_VERSION}-SWARE-CME_HW.tgz
 CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 
@@ -448,6 +442,22 @@ rm ${CME_API_RECOVERY}
 pip install --no-index -f wheelhouse cmeapi
 rm -rf wheelhouse
 popd
+
+
+# Setup the Cme-hw layer (recovery)
+echo
+echo "  Setting up Cme-hw (recovery)..."
+mkdir Cme-hw
+pushd Cme-hw
+python -m venv cmehw_venv
+source cmehw_venv/bin/activate
+curl -sSO ${SETUP}/${CME_HW_RECOVERY}
+tar -xvzf ${CME_HW_RECOVERY}
+rm ${CME_HW_RECOVERY}
+pip install --no-index -f wheelhouse cmehw
+rm -rf wheelhouse
+popd
+
 
 
 # Setup the Cme-web application (recovery)
