@@ -7,32 +7,37 @@
 # This script requires some env variables to be setup in order to
 # retrieve the installation files and versioned Cme applications.
 
+VERSION="${VERISON:-1.0.0}"
+SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
+
+clear
 echo
-echo "  This script is intended to set up a CME device with all system components."
-echo "  The CME device must be manually rebooted after the script runs.  The script"
-echo "  allows several environment variables be set in order to retrieve the"
-echo "  installation files and versioned application packages."
+echo "    This script is intended to set up a CME device with all system components."
+echo "    The CME device must be manually rebooted after the script runs.  The script"
+echo "    allows several environment variables be set in order to retrieve the"
+echo "    installation files and versioned application packages."
 echo
-echo "  Prior to running this script, you can export these environment variables:"
+echo "    Prior to running this script, you can export these environment variables:"
 echo
-echo "    VERSION - give a default version used if package version is not set"
-echo "        default: 1.0.0"
+echo "        VERSION - give a default version used if package version is not set"
+echo "            default: ${VERSION}"
 echo
-echo "    SETUP - provide a URL that can be used by curl"
-echo "        default: SETUP=https://s3.amazonaws.com/transtectorpublicdownloads/Cme"
+echo "        SETUP - provide a URL that can be used by curl"
+echo "            default: ${SETUP}"
 echo
-echo "    CME_INIT_VERSION - identify the Cme-init program version to install"
+echo "        CME_INIT_VERSION - Cme-init (supervisor/launcher) program version"
 echo
-echo "    CME_API_RECOVERY_VERSION - identify the Cme-api program installed for recovery mode operation"
-echo "    CME_HW_RECOVERY_VERSION - identify the Cme-hw program installed for recovery mode operation"
-echo "    CME_WEB_RECOVERY_VERSION - identify the Cme-web application installed for recovery mode operation"
+echo "        CME_API_RECOVERY_VERSION - API application for recovery mode"
+echo "        CME_HW_RECOVERY_VERSION  - HARDWARE application for recovery mode"
+echo "        CME_WEB_RECOVERY_VERSION - WEB application for recovery mode"
 echo
-echo "    CME_API_VERSION - identify the application layer API program version"
-echo "    CME_HW_VERSION - identify the application layer hardware program version"
-echo "    CME_WEB_VERSION - identify the web application  version"
+echo "        CME_API_VERSION - API application for normal mode"
+echo "        CME_HW_VERSION  - HARDWARE application for normal mode"
+echo "        CME_WEB_VERSION - WEB application for normal mode"
 echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
+clear
 
 # SOFTWARE PART NUMBERS - these set by Transtector
 CME_INIT_PN=1500-004
@@ -40,13 +45,6 @@ CME_API_PN=1500-005
 CME_HW_PN=1500-006
 CME_WEB_PN=1500-007
 
-# Default version
-VERSION="${VERISON:-1.0.0}"
-
-# Set some default values
-
-# Download URL
-SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 
 # CME Base Packages - these are essentially the base software
 # that get installed to Cme device and will form the "recovery

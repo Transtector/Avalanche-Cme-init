@@ -1,0 +1,33 @@
+# This docker is used to build CME application source distribution
+# packages that will be built into docker images.  Whew - that's 
+# a mouthful, but basically this docker can be used to turn the
+# Python CME application projects into tarballs that are installed
+# into the cme-base docker image to make a application layer docker
+# image used on the CME app layer.
+#
+# Build this docker image into 'cme-build':
+#
+#   $ docker build -t cme-build -f cme-build.docker .
+#
+# Build the application docker source tarball by running this
+# image in the application source project folder:
+#
+#   $ docker run --rm -it -v $(pwd):/root/${PWD##*/} cme-build
+#
+
+FROM cme-base
+MAINTAINER James Brunner <james.brunner@smithsmicrowave.com>
+
+# Adds Python libraries, external toolsets, and headers
+# required to build the cme application.  Pip wheel is then
+# used to make a set of wheels which can be bundled into a
+# clean docker image used to run the application.
+RUN apk add --update \
+		build-base \
+		linux-headers \
+		rrdtool-dev \
+		python3-dev && \
+		pip install wheel 
+
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["echo ERROR - build script required!"]
