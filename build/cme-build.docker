@@ -12,7 +12,7 @@
 # Build the application docker source tarball by running this
 # image in the application source project folder:
 #
-#   $ docker run --rm -it -v $(pwd):/root/${PWD##*/} cme-build
+#   $ docker run --rm -it -v $(pwd):/root/app cme-build "build/build.sh .docker"
 #
 
 FROM cme-base
@@ -29,5 +29,6 @@ RUN apk add --update \
 		python3-dev && \
 		pip install wheel 
 
+WORKDIR /root/app
 ENTRYPOINT ["/bin/bash", "-c"]
 CMD ["echo ERROR - build script required!"]
