@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Run this script to build the Cme-init (initialization and supervisory
-# layer) distribution tarball that can be downloaded to a CME device
-# and installed.
-
 CME_INIT_PN=1500-004
 
 SRC=$(pwd) # project source code
@@ -32,7 +28,7 @@ cp -R ${SRC}/cmeinit/ .
 cp ${SRC}/VERSION .
 cp ${SRC}/setup.py .
 
-# Activate the Cme-init venv
+# Activate the venv
 source ${SRC}/cmeinit_venv/bin/activate
 
 # Generate the wheels for the application.
