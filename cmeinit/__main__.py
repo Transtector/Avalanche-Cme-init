@@ -19,16 +19,15 @@ SHUTDOWN_FLAG = False
 # set in main
 LOGGER = None
 
+# Set the GPIO pin numbers
+GPIO_STATUS_SOLID = 5 # Write 1/True for solid, 0/False for blinking
+GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
+GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
+GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
 def InitializeGPIO():
 	# Use Broadcom GPIO numbering
 	GPIO.setmode(GPIO.BCM)
-
-	# Set the GPIO pin numbers
-	GPIO_STATUS_SOLID = 5 # Write 1/True for solid, 0/False for blinking
-	GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
-	GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
-	GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
 	# Setup the GPIO hardware and initialize the outputs
 	GPIO.setup(GPIO_STATUS_SOLID, GPIO.OUT, initial=False) # Start w/blinking
