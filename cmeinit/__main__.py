@@ -157,6 +157,7 @@ def main(argv=None):
 		'PATH': os.path.join(Config.PATHS.LOGDIR, 'cme-boot.log'),
 		'SIZE': (1024 * 10),
 		'COUNT': 1,
+		'LEVEL': 'INFO',
 		'FORMAT': '%(asctime)s %(levelname)-8s [%(name)s] %(message)s', 
 		'DATE': '%Y-%m-%d %H:%M:%S',
 		'CONSOLE': False
