@@ -7,44 +7,93 @@
 # This script requires some env variables to be setup in order to
 # retrieve the installation files and versioned Cme applications.
 
-VERSION="${VERISON:-1.0.0}"
+VERSION="${VERSION:-1.0.0}"
 SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 
-clear
-echo
-echo "    This script is intended to set up a CME device with all system components."
-echo "    The CME device must be manually rebooted after the script runs.  The script"
-echo "    allows several environment variables be set in order to retrieve the"
-echo "    installation files and versioned application packages."
-echo
-echo "    Prior to running this script, you can export these environment variables:"
-echo
-echo "        VERSION - give a default version used if package version is not set"
-echo "            default: ${VERSION}"
-echo
-echo "        SETUP - provide a URL that can be used by curl"
-echo "            default: ${SETUP}"
-echo
-echo "        CME_INIT_VERSION - Cme-init (supervisor/launcher) program version"
-echo
-echo "        CME_API_RECOVERY_VERSION - API application for recovery mode"
-echo "        CME_HW_RECOVERY_VERSION  - HARDWARE application for recovery mode"
-echo "        CME_WEB_RECOVERY_VERSION - WEB application for recovery mode"
-echo
-echo "        CME_API_VERSION - API application for normal mode"
-echo "        CME_HW_VERSION  - HARDWARE application for normal mode"
-echo "        CME_WEB_VERSION - WEB application for normal mode"
-echo
-read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
-echo
-clear
+function usage {
+	echo
+	echo "usage: $0 [-hv] --version[...][=]<value>"
+	echo "    -h    display help"
+	echo "    -v    display current version settings"
+	echo "    --version[-init | [-api | -hw | -web[-pkg]][=]<value>"
+	echo "          set default version and component version overrides"
+	echo "          -pkg component application (docker) override"
+	echo
+}
 
-# SOFTWARE PART NUMBERS - these set by Transtector
+# This section parses command arguments
+optspec=":hv-:"
+while getopts "$optspec" optchar; do
+	case "${optchar}" in
+		-)
+			case "${OPTARG}" in
+				version-init=*)
+					val=${OPTARG#*=}
+					CME_INIT_VERSION=$val
+					echo "Setting CME_INIT_VERSION: '${val}'" >&2
+					;;
+				version-api=*)
+					val=${OPTARG#*=}
+					CME_API_RECOVERY_VERSION=$val
+					echo "Setting CME_API_RECOVERY_VERSION: '${val}'" >&2
+					;;
+				version-api-pkg*)
+					val=${OPTARG#*=}
+					CME_API_VERSION=$val
+					echo "Setting CME_API_VERSION: '${val}'" >&2
+					;;
+				version-hw=*)
+					val=${OPTARG#*=}
+					CME_HW_RECOVERY_VERSION=$val
+					echo "Setting CME_HW_RECOVERY_VERSION: '${val}'" >&2
+					;;
+				version-hw-pkg*)
+					val=${OPTARG#*=}
+					CME_HW_VERSION=$val
+					echo "Setting CME_HW_VERSION: '${val}'" >&2
+					;;
+				version-web=*)
+					val=${OPTARG#*=}
+					CME_WEB_RECOVERY_VERSION=$val
+					echo "Setting CME_WEB_RECOVERY_VERSION: '${val}'" >&2
+					;;
+				version-web-pkg*)
+					val=${OPTARG#*=}
+					CME_WEB_VERSION=$val
+					echo "Setting CME_WEB_VERSION: '${val}'" >&2
+					;;
+				version=*)
+					val=${OPTARG#*=}
+					VERSION=${val}
+					echo "Setting VERSION: '${val}'" >&2
+					;;
+				*)
+					echo "Invalid option: ${OPTARG}"
+					exit 1
+					;;
+			esac;;
+		h)
+			usage
+			exit 1
+			;;
+		v)
+			view
+			exit 1
+			;;
+		*)
+			if [ "$OPTERR" != 1 ] || [ "${optspec:0:1}" = ":" ]; then
+				echo "Invalid option: '-${OPTARG}'" >&2
+				exit 1
+			fi
+			;;
+	esac
+done
+
+#SOFTWARE PART NUMBERS - these set by Transtector
 CME_INIT_PN=1500-004
 CME_API_PN=1500-005
 CME_HW_PN=1500-006
 CME_WEB_PN=1500-007
-
 
 # CME Base Packages - these are essentially the base software
 # that get installed to Cme device and will form the "recovery
@@ -55,13 +104,6 @@ CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
 CME_HW_RECOVERY_VERSION="${CME_HW_RECOVERY_VERSION:-$VERSION}"
 CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
 
-# CME Base Packages - package filenames
-CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
-CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
-CME_HW_RECOVERY=${CME_HW_PN}-v${CME_HW_RECOVERY_VERSION}-SWARE-CME_HW.tgz
-CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
-
-
 # CME Application Layers - these are just like the packages above but
 # have been wrapped with a Docker container and made into a Docker image
 # that can be loaded directly into the target device.  Note the ".pkg.tgz"
@@ -69,6 +111,44 @@ CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 CME_API_VERSION="${CME_API_VERSION:-$VERSION}"
 CME_HW_VERSION="${CME_HW_VERSION:-$VERSION}"
 CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
+
+clear
+echo
+echo "    This script is intended to set up a CME device with all system components."
+echo "    The CME device must be manually rebooted after the script runs."
+echo "    Set default and component versions using command line '--version' arguments"
+echo "    or set environment variables."
+echo
+echo "    Here's what we have right now..."
+echo
+echo "        SETUP: '${SETUP}'"
+echo "            - the URL used for downloading components"
+echo
+echo "        VERSION: '${VERSION}'"
+echo "            - version used if component overrides are not set"
+echo
+echo "        CME_INIT_VERSION: '${CME_INIT_VERSION}'"
+echo "            - supervisor/launcher program version"
+echo
+echo "        CME_API_RECOVERY_VERSION:  '${CME_API_RECOVERY_VERSION}'"
+echo "        CME_HW_RECOVERY_VERSION:   '${CME_HW_RECOVERY_VERSION}'"
+echo "        CME_WEB_RECOVERY_VERSION:  '${CME_WEB_RECOVERY_VERSION}'"
+echo "            - recovery mode (base) packages"
+echo
+echo "        CME_API_VERSION:  '${CME_API_VERSION}'"
+echo "        CME_HW_VERSION:   '${CME_HW_VERSION}'"
+echo "        CME_WEB_VERSION:  '${CME_WEB_VERSION}'"
+echo "            - application layer (docker) packages"
+echo
+read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
+echo
+clear
+
+# CME Base Packages - package filenames
+CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
+CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
+CME_HW_RECOVERY=${CME_HW_PN}-v${CME_HW_RECOVERY_VERSION}-SWARE-CME_HW.tgz
+CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 # Application layers - package filenames
 CME_API=${CME_API_PN}-v${CME_API_VERSION}-SWARE-CME_API.pkg.tgz

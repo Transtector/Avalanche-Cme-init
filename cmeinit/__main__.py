@@ -2,70 +2,66 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import logging, logging.handlers, signal, os, sys, glob, time, subprocess, threading
+import signal, os, sys, glob, time, subprocess, threading
 from datetime import datetime
 
 import RPi.GPIO as GPIO
 import semver
 
-from .common import Config
+from .common import Config, Logging
 from .common.Reboot import restart
 
-SHUTDOWN_FLAG = False # set by the cleanup callback on SIGTERM
 
-# Use Broadcom GPIO numbering
-GPIO.setmode(GPIO.BCM)
+# set by the cleanup callback on SIGTERM
+# and shutsdown hardware loop
+SHUTDOWN_FLAG = False
 
-# Set the GPIO pin numbers
-GPIO_STATUS_SOLID = 5 # Write 1/True for solid, 0/False for blinking
-GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
-GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
-GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
-
-# Setup the GPIO hardware and initialize the outputs
-GPIO.setup(GPIO_STATUS_SOLID, GPIO.OUT, initial=False) # Start w/blinking
-GPIO.setup(GPIO_STATUS_GREEN, GPIO.OUT, initial=True) # Start w/green
-GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edge
-GPIO.setup(GPIO_STANDBY, GPIO.OUT, initial=False) # Start w/power on
+# set in main
+LOGGER = None
 
 
-# delete any previous uploaded files (that were not installed)
-for f in glob.glob(Config.PATHS.UPLOADS + '/*'):
-	try:
-		os.remove(f)
-	except:
-		pass
+def InitializeGPIO():
+	# Use Broadcom GPIO numbering
+	GPIO.setmode(GPIO.BCM)
+
+	# Set the GPIO pin numbers
+	GPIO_STATUS_SOLID = 5 # Write 1/True for solid, 0/False for blinking
+	GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
+	GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
+	GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
+
+	# Setup the GPIO hardware and initialize the outputs
+	GPIO.setup(GPIO_STATUS_SOLID, GPIO.OUT, initial=False) # Start w/blinking
+	GPIO.setup(GPIO_STATUS_GREEN, GPIO.OUT, initial=True) # Start w/green
+	GPIO.setup(GPIO_N_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Detect falling edge
+	GPIO.setup(GPIO_STANDBY, GPIO.OUT, initial=False) # Start w/power on
+
+	# Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
+	GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
 
 
-# Configure BOOTLOG and delete previous (start fresh every boot)
-try:
-	os.remove(Config.LOGGING.BOOTLOG)
-except:
-	pass
-logger = logging.getLogger("cmeinit")
-logger.setLevel(logging.DEBUG) # let handlers set real level
-formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-sh = logging.StreamHandler(sys.stdout)
-fh = logging.handlers.RotatingFileHandler(Config.LOGGING.BOOTLOG, maxBytes=(1024 * 10), backupCount=1)
-sh.setFormatter(formatter)
-fh.setFormatter(formatter)
-sh.setLevel(logging.DEBUG)
-fh.setLevel(logging.DEBUG)
-logger.addHandler(sh)
-logger.addHandler(fh)
+def SetupSignaling():
+	# SIGTERM signal handler - called at shutdown (see common/Reboot.py)
+	# This lets us reboot/halt from other code modules without having
+	# GPIO included in them. Note that there are some issues with
+	# SIGTERM under systemd and therefore we must also listen for
+	# SIGHUP for cleanup as well.
+	signal.signal(signal.SIGTERM, cleanup)
+	signal.signal(signal.SIGHUP, cleanup)
 
 
-# RESET detection callback
 def reset(ch):
+	''' Hardware reset button callback
 
-	# Software edge debounce - check level after 50 ms
-	# and return if still HIGH (false trigger)
+		Software edge debounce - check level after 50 ms
+		and return if still HIGH (false trigger).
+	'''
 	time.sleep(0.05)
 	if GPIO.input(GPIO_N_RESET) == GPIO.HIGH:
 		return
 
 	# Else once we get here we're rebooting and nothing can stop us!
-	logger.info("Reset detected")
+	LOGGER.info("Reset detected")
 
 	# on reset detect, set STATUS BLINKING/GREEN
 	GPIO.output(GPIO_STATUS_GREEN, True)
@@ -92,20 +88,20 @@ def reset(ch):
 		# blink red after RESET_REBOOT_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_REBOOT_SECONDS:
 			if not recovery_mode:
-				logger.info("Reset to recovery mode signal detected")
+				LOGGER.info("Reset to recovery mode signal detected")
 				recovery_mode = True
 				GPIO.output(GPIO_STATUS_GREEN, False)
 
 		# solid red after RESET_RECOVERY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_RECOVERY_SECONDS:
 			if not factory_reset:
-				logger.info("Reset factory defaults signal detected")
+				LOGGER.info("Reset factory defaults signal detected")
 				factory_reset = True
 				GPIO.output(GPIO_STATUS_SOLID, True)
 
 		# power off/standby after RESET_FACTORY_SECONDS
 		if elapsed_seconds > Config.RECOVERY.RESET_FACTORY_SECONDS:
-			logger.info("Reset power off/standby signal detected")
+			LOGGER.info("Reset power off/standby signal detected")
 
 			power_off = True
 			recovery_mode = False
@@ -117,27 +113,23 @@ def reset(ch):
 	# trigger a reboot if we're not powering off
 	# there is a short delay on the reboot to let
 	# us clean up cleanly
-	restart(power_off=power_off, recovery_mode=recovery_mode, factory_reset=factory_reset, logger=logger)
-
-# Add the reset falling edge detector; bouncetime of 50 ms means subsequent edges are ignored for 50 ms.
-GPIO.add_event_detect(GPIO_N_RESET, GPIO.FALLING, callback=reset, bouncetime=50)
+	restart(power_off=power_off, recovery_mode=recovery_mode, factory_reset=factory_reset, LOGGER=LOGGER)
 
 
-
-# Exit gracefully - set LED status RED/BLINKING then clean up and exit.  
-# cleanup() is primarily called indirectly by detecting the SIGTERM
-# signal sent by the system at shutdown (see common/Reboot.py).  Note
-# that the Cme-init program must signal the general "running" state
-# before the power off signal will be detected by the MCU.
 def cleanup(signum=None, frame=None):
-
+	''' Exit gracefully - set LED status RED/BLINKING then clean up and exit.  
+		cleanup() is primarily called indirectly by detecting the SIGTERM
+		signal sent by the system at shutdown (see common/Reboot.py).  Note
+		that the Cme-init program must signal the general "running" state
+		before the power off signal will be detected by the MCU.
+	'''
 	global SHUTDOWN_FLAG
 	if SHUTDOWN_FLAG: # we've already received SIGTERM and set this
 		return
 
 	SHUTDOWN_FLAG = True
 
-	logger.info("CME system cleanup")
+	LOGGER.info("CME system cleanup")
 
 	GPIO.output(GPIO_STATUS_GREEN, False) # red
 	GPIO.output(GPIO_STATUS_SOLID, False) # blinking
@@ -149,27 +141,47 @@ def cleanup(signum=None, frame=None):
 		os.remove(Config.PATHS.POWEROFF_FILE)
 		
 		# shutdown - must be held for at least 150 ms
-		logger.info("CME sending system halt signal")
+		LOGGER.info("CME sending system halt signal")
 		GPIO.output(GPIO_STANDBY, True)
 		time.sleep(0.15)
 
 	GPIO.cleanup()
-	logger.info("CME system software exiting")
+	LOGGER.info("CME system software exiting")
 
 
-# SIGTERM signal handler - called at shutdown (see common/Reboot.py)
-# This lets us reboot/halt from other code modules without having
-# GPIO included in them. Note that there are some issues with
-# SIGTERM under systemd and therefore we must also listen for
-# SIGHUP for cleanup as well.
-signal.signal(signal.SIGTERM, cleanup)
-signal.signal(signal.SIGHUP, cleanup)
+def main(argv=None):
+	''' Main program entry point '''
 
+	logging_config = {
+		REMOVE_PREVIOUS: True,
+		PATH: os.path.join(Config.PATHS.LOGDIR, 'cme-boot.log'),
+		SIZE: (1024 * 10),
+		COUNT: 1,
+		FORMAT: '%(asctime)s %(levelname)-8s [%(name)s] %(message)s', 
+		DATE: '%Y-%m-%d %H:%M:%S',
+		CONSOLE: False
+	}
 
-# Main program entry
-def main(*args):
+	# process arguments if any to override Config
 
-	logger.info("CME system starting")
+	# setup logging
+	global LOGGER
+	LOGGER = Logging.GetLogger('cmeinit', logging_config)
+	LOGGER.info("CME system starting")
+
+	# delete any previous uploaded files (that were not installed)
+	for f in glob.glob(Config.PATHS.UPLOADS + '/*'):
+		try:
+			os.remove(f)
+		except:
+			pass
+
+	# setup the GPIO
+	InitializeGPIO()
+
+	# set signaling for clean shutdowns
+	SetupSignaling()
+
 
 	# STAGE 1.  RECOVERY MODE (Green Blinking)
 	#
@@ -179,14 +191,14 @@ def main(*args):
 	# recovery startup stage.
 	recovery_mode = False
 	if os.path.isfile(Config.PATHS.RECOVERY_FILE):
-		logger.info("Recovery mode boot requested")
+		LOGGER.info("Recovery mode boot requested")
 		try:
 			os.remove(Config.PATHS.RECOVERY_FILE)
 		except:
 			pass
 		recovery_mode = True
 	else:
-		logger.info("Normal boot mode requested")
+		LOGGER.info("Normal boot mode requested")
 
 
 	# STAGE 2.  SOFTWARE UPDATE (Green Blinking)
@@ -196,7 +208,7 @@ def main(*args):
 	# manipulates the installed docker images if
 	# images are found there.
 	if not recovery_mode:
-		logger.info("Checking for updates")
+		LOGGER.info("Checking for updates")
 
 		update_dir = Config.PATHS.UPDATE
 		update_glob = Config.UPDATES.UPDATE_GLOB
@@ -205,20 +217,20 @@ def main(*args):
 
 		for package in packages:
 			pkg_name = os.path.basename(package)
-			logger.info("Update found: {0}".format(pkg_name))
+			LOGGER.info("Update found: {0}".format(pkg_name))
 			error_msg = _load_docker(package)
 			if error_msg:
-				logger.error("Error loading update: {0}".format(error_msg))
+				LOGGER.error("Error loading update: {0}".format(error_msg))
 			else:
-				logger.info("Update loaded: {0}".format(pkg_name))
+				LOGGER.info("Update loaded: {0}".format(pkg_name))
 			# remove update package file regardless of success or failure
 			os.remove(package)
 		
 		if not packages:
-			logger.info("No updates found")
+			LOGGER.info("No updates found")
 
 	else:
-		logger.info("Update stage bypassed (Recovery mode)")
+		LOGGER.info("Update stage bypassed (Recovery mode)")
 
 
 	# STAGE 3.  MODULE LAUNCH (Green Solid)
@@ -227,7 +239,7 @@ def main(*args):
 	# A parallel loop is started to watch them and
 	# shuts down if either terminates abnormally.
 	if not recovery_mode:
-		logger.info("Launching modules")
+		LOGGER.info("Launching modules")
 
 		# remove any existing containers
 		_stop_remove_containers()
@@ -244,7 +256,7 @@ def main(*args):
 
 			# launch the cme-docker-fifo (this call should not block)
 			fifo = os.path.join(os.getcwd(), 'cme-docker-fifo.sh')
-			logger.info("Lauching {0}".format(fifo))
+			LOGGER.info("Lauching {0}".format(fifo))
 			fifo_p = subprocess.Popen([fifo], stdout=subprocess.PIPE)
 
 			# launch Cme-web, but don't wait (it's just a volume container)
@@ -266,15 +278,15 @@ def main(*args):
 			t_cmehw.join()
 
 			if fifo_p:
-				logger.info("Terminating {0}".format(fifo))
+				LOGGER.info("Terminating {0}".format(fifo))
 				fifo_p.terminate()
 
-			logger.warning("Application module(s) exiting")
+			LOGGER.warning("Application module(s) exiting")
 
 		else:
-			logger.warning("Application modules not found")
+			LOGGER.warning("Application modules not found")
 	else:
-		logger.info("Module launch stage bypassed (Recovery mode)")
+		LOGGER.info("Module launch stage bypassed (Recovery mode)")
 
 
 
@@ -286,7 +298,7 @@ def main(*args):
 	if SHUTDOWN_FLAG:
 		return # cleanup() has set the shutdown flag - nothing more to do
 
-	logger.info("Launching recovery module")
+	LOGGER.info("Launching recovery module")
 	GPIO.output(GPIO_STATUS_GREEN, False)
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
@@ -331,7 +343,7 @@ def _launch_docker(image):
 		cmd.extend([ image[0] + ':' + image[1] ])
 
 	# Run docker image (detached, -d) and collect container ID
-	logger.info("Launching module {0}".format(' '.join(cmd)))
+	LOGGER.info("Launching module {0}".format(' '.join(cmd)))
 	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode().strip()
 
 	# cmeweb is just a volume container - run it and return
@@ -339,11 +351,11 @@ def _launch_docker(image):
 	if image[0] == 'cmeweb': return
 
 	# Wait for the (detached) container to stop running
-	logger.info("Launched {0}".format(cmd))
-	logger.info("Waiting for {0} to terminate".format(ID))
+	LOGGER.info("Launched {0}".format(cmd))
+	LOGGER.info("Waiting for {0} to terminate".format(ID))
 	subprocess.run(['docker', 'wait', ID ])  # <--- this should block while container runs!
 
-	logger.info("Module ID {0} terminated".format(ID))
+	LOGGER.info("Module ID {0} terminated".format(ID))
 
 	# If _any_ container stops (gets here), then stop/remove all containers
 	_stop_remove_containers()
@@ -377,7 +389,7 @@ def _list_docker_images():
 
 # Stop and remove application docker containers
 def _stop_remove_containers():
-	logger.info("Stopping and removing any module containers")
+	LOGGER.info("Stopping and removing any module containers")
 	containers = subprocess.run(['docker', 'ps', '-aq'], stdout=subprocess.PIPE).stdout.decode().rstrip().split('\n')
 
 	for container in containers:
@@ -409,10 +421,10 @@ if __name__ == "__main__":
 		main()
 
 	except KeyboardInterrupt:
-		logger.info("Avalanche (Cme-init) shutdown requested ... exiting")
+		LOGGER.info("Avalanche (Cme-init) shutdown requested ... exiting")
 
 	except Exception as e:
-		logger.info("Avalanche (Cme-init) has STOPPED on exception {0}".format(e))
+		LOGGER.info("Avalanche (Cme-init) has STOPPED on exception {0}".format(e))
 
 	finally:
 		cleanup()
