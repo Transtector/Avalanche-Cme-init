@@ -153,13 +153,13 @@ def main(argv=None):
 	''' Main program entry point '''
 
 	logging_config = {
-		REMOVE_PREVIOUS: True,
-		PATH: os.path.join(Config.PATHS.LOGDIR, 'cme-boot.log'),
-		SIZE: (1024 * 10),
-		COUNT: 1,
-		FORMAT: '%(asctime)s %(levelname)-8s [%(name)s] %(message)s', 
-		DATE: '%Y-%m-%d %H:%M:%S',
-		CONSOLE: False
+		'REMOVE_PREVIOUS': True,
+		'PATH': os.path.join(Config.PATHS.LOGDIR, 'cme-boot.log'),
+		'SIZE': (1024 * 10),
+		'COUNT': 1,
+		'FORMAT': '%(asctime)s %(levelname)-8s [%(name)s] %(message)s', 
+		'DATE': '%Y-%m-%d %H:%M:%S',
+		'CONSOLE': False
 	}
 
 	# process arguments if any to override Config
