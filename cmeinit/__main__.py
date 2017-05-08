@@ -25,6 +25,7 @@ GPIO_STATUS_GREEN = 6 # Write 1/True for green, 0/False for red
 GPIO_N_RESET = 16 # Read 0/Low/False (falling edge) to detect reset button pushed
 GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
+
 def InitializeGPIO():
 	# Use Broadcom GPIO numbering
 	GPIO.setmode(GPIO.BCM)
@@ -151,7 +152,13 @@ def cleanup(signum=None, frame=None):
 def main(argv=None):
 	''' Main program entry point '''
 
-	logging_config = {
+	# process arguments if any to override Config
+	if not argv:
+		argv = sys.argv[1:]
+
+	# setup logging
+	global LOGGER
+	LOGGER = Logging.GetLogger('cmeinit', {
 		'REMOVE_PREVIOUS': True,
 		'PATH': os.path.join(Config.PATHS.LOGDIR, 'cme-boot.log'),
 		'SIZE': (1024 * 10),
@@ -159,14 +166,8 @@ def main(argv=None):
 		'LEVEL': 'INFO',
 		'FORMAT': '%(asctime)s %(levelname)-8s [%(name)s] %(message)s', 
 		'DATE': '%Y-%m-%d %H:%M:%S',
-		'CONSOLE': False
-	}
-
-	# process arguments if any to override Config
-
-	# setup logging
-	global LOGGER
-	LOGGER = Logging.GetLogger('cmeinit', logging_config)
+		'CONSOLE': '--console' in argv
+	})
 	LOGGER.info("CME system starting")
 
 	# delete any previous uploaded files (that were not installed)
@@ -287,7 +288,6 @@ def main(argv=None):
 			LOGGER.warning("Application modules not found")
 	else:
 		LOGGER.info("Module launch stage bypassed (Recovery mode)")
-
 
 
 	# STAGE 4.  RECOVERY LAUNCH (Red Solid)
