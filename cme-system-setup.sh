@@ -23,9 +23,12 @@ function usage {
 	echo 
 	echo "    --dhcp set DHCP as default networking"
 	echo
+	echo "    --url=<package URL>"
+	echo "           set the URL used for package retrieval"
+	echo
 	echo "    --version[ -init | [ (-api | -hw | -web) [ -pkg ] ]=<value>"
-	echo "          set default version and component version overrides"
-	echo "          -pkg component application (docker) override"
+	echo "           set default version and component version overrides"
+	echo "           -pkg component application (docker) override"
 	echo
 }
 
@@ -44,10 +47,10 @@ while getopts "$optspec" optchar; do
 				version-web=*)		CME_WEB_RECOVERY_VERSION=$val;;
 				version-web-pkg=*)	CME_WEB_VERSION=$val;;
 				version=*)			VERSION=$val;;
+				url=*)				SETUP=$val;;
 				dhcp)				USE_DHCP=1;;
 				*)
-					echo "Invalid option: ${OPTARG}"
-					exit 1
+					ERROR+="Invalid option: '${OPTARG}'\n"
 					;;
 			esac
 			;;
@@ -57,8 +60,7 @@ while getopts "$optspec" optchar; do
 			;;
 		*)
 			if [ "$OPTERR" != 1 ] || [ "${optspec:0:1}" = ":" ]; then
-				echo "Invalid option: '-${OPTARG}'" >&2
-				exit 1
+				ERROR+="Invalid option: '-${OPTARG}'\n"
 			fi
 			;;
 	esac
@@ -88,6 +90,12 @@ CME_HW_VERSION="${CME_HW_VERSION:-$VERSION}"
 CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
 
 clear
+if [ ! -z ${ERROR+x} ]; then
+	echo
+	echo "    Note one or more options had errors:"
+	echo -e "    ${ERROR}"
+	echo
+fi
 echo
 echo "    This script is intended to set up a CME device with all system components."
 echo "    The CME device must be manually rebooted after the script runs."
