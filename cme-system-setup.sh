@@ -12,72 +12,47 @@ SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 
 function usage {
 	echo
-	echo "usage: $0 [-hv] --version[...][=]<value>"
-	echo "    -h    display help"
-	echo "    -v    display current version settings"
-	echo "    --version[-init | [-api | -hw | -web[-pkg]][=]<value>"
+	echo "Setup a CME device starting from base OS image and installing programs,"
+	echo "system configuration, networking, and services.  A summary of component"
+	echo "versions is shown before making changes, and at that point the script"
+	echo "will prompt to continue."
+	echo
+	echo "usage: $0 [ -h ] --version[...]=<value>"
+	echo
+	echo "    -h     display help"
+	echo 
+	echo "    --dhcp set DHCP as default networking"
+	echo
+	echo "    --version[ -init | [ (-api | -hw | -web) [ -pkg ] ]=<value>"
 	echo "          set default version and component version overrides"
 	echo "          -pkg component application (docker) override"
 	echo
 }
 
 # This section parses command arguments
-optspec=":hv-:"
+optspec=":h-:"
 while getopts "$optspec" optchar; do
 	case "${optchar}" in
 		-)
+			val=${OPTARG#*=}
 			case "${OPTARG}" in
-				version-init=*)
-					val=${OPTARG#*=}
-					CME_INIT_VERSION=$val
-					echo "Setting CME_INIT_VERSION: '${val}'" >&2
-					;;
-				version-api=*)
-					val=${OPTARG#*=}
-					CME_API_RECOVERY_VERSION=$val
-					echo "Setting CME_API_RECOVERY_VERSION: '${val}'" >&2
-					;;
-				version-api-pkg*)
-					val=${OPTARG#*=}
-					CME_API_VERSION=$val
-					echo "Setting CME_API_VERSION: '${val}'" >&2
-					;;
-				version-hw=*)
-					val=${OPTARG#*=}
-					CME_HW_RECOVERY_VERSION=$val
-					echo "Setting CME_HW_RECOVERY_VERSION: '${val}'" >&2
-					;;
-				version-hw-pkg*)
-					val=${OPTARG#*=}
-					CME_HW_VERSION=$val
-					echo "Setting CME_HW_VERSION: '${val}'" >&2
-					;;
-				version-web=*)
-					val=${OPTARG#*=}
-					CME_WEB_RECOVERY_VERSION=$val
-					echo "Setting CME_WEB_RECOVERY_VERSION: '${val}'" >&2
-					;;
-				version-web-pkg*)
-					val=${OPTARG#*=}
-					CME_WEB_VERSION=$val
-					echo "Setting CME_WEB_VERSION: '${val}'" >&2
-					;;
-				version=*)
-					val=${OPTARG#*=}
-					VERSION=${val}
-					echo "Setting VERSION: '${val}'" >&2
-					;;
+				version-init=*)		CME_INIT_VERSION=$val;;
+				version-api=*)		CME_API_RECOVERY_VERSION=$val;;
+				version-api-pkg=*)	CME_API_VERSION=$val;;
+				version-hw=*)		CME_HW_RECOVERY_VERSION=$val;;
+				version-hw-pkg=*)	CME_HW_VERSION=$val;;
+				version-web=*)		CME_WEB_RECOVERY_VERSION=$val;;
+				version-web-pkg=*)	CME_WEB_VERSION=$val;;
+				version=*)			VERSION=$val;;
+				dhcp)				USE_DHCP=1;;
 				*)
 					echo "Invalid option: ${OPTARG}"
 					exit 1
 					;;
-			esac;;
+			esac
+			;;
 		h)
 			usage
-			exit 1
-			;;
-		v)
-			view
 			exit 1
 			;;
 		*)
@@ -139,6 +114,9 @@ echo "        CME_API_VERSION:  '${CME_API_VERSION}'"
 echo "        CME_HW_VERSION:   '${CME_HW_VERSION}'"
 echo "        CME_WEB_VERSION:  '${CME_WEB_VERSION}'"
 echo "            - application layer (docker) packages"
+echo
+if [ -z ${USE_DHCP+x} ]; then dhcp_status="STATIC"; else dhcp_status="DHCP"; fi	
+echo "        NETWORK SETUP: ${dhcp_status}"
 echo
 read -n1 -rsp "    CTRL-C to exit now, any other key to continue..." < "$(tty 0>&2)"
 echo
@@ -322,8 +300,14 @@ EOF
 # This symlink sets network to use STATIC by default.  Replace
 # interfaces_static with interfaces_dhcp to use DHCP instead.
 rm /etc/network/interfaces
-ln -s /etc/network/interfaces_static /etc/network/interfaces
-echo "  ...networking set to STATIC IP address"
+if [ -z ${USE_DHCP+x} ]; then
+	ln -s /etc/network/interfaces_static /etc/network/interfaces
+	NET="STATIC"
+else
+	ln -s /etc/network/interfaces_dhcp /etc/network/interfaces
+	NET="DHCP"
+fi
+echo "  ...networking set to use ${NET} addressing"
 
 
 # We give each CME device an SSH key so it can easily access
