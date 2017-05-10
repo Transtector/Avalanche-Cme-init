@@ -8,7 +8,7 @@
 # retrieve the installation files and versioned Cme applications.
 
 VERSION="${VERSION:-1.0.0}"
-SETUP="${SETUP:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
+URL="${URL:-https://s3.amazonaws.com/transtectorpublicdownloads/Cme}"
 
 function usage {
 	echo
@@ -47,7 +47,7 @@ while getopts "$optspec" optchar; do
 				version-web=*)		CME_WEB_RECOVERY_VERSION=$val;;
 				version-web-pkg=*)	CME_WEB_VERSION=$val;;
 				version=*)			VERSION=$val;;
-				url=*)				SETUP=$val;;
+				url=*)				URL=$val;;
 				dhcp)				USE_DHCP=1;;
 				*)
 					ERROR+="Invalid option: '${OPTARG}'\n"
@@ -92,8 +92,10 @@ CME_WEB_VERSION="${CME_WEB_VERSION:-$VERSION}"
 clear
 if [ ! -z ${ERROR+x} ]; then
 	echo
+	echo "========================================"
 	echo "    Note one or more options had errors:"
-	echo -e "    ${ERROR}"
+	echo
+	echo -e "        ${ERROR}========================================"
 	echo
 fi
 echo
@@ -104,7 +106,7 @@ echo "    or set environment variables."
 echo
 echo "    Here's what we have right now..."
 echo
-echo "        SETUP: '${SETUP}'"
+echo "        URL: '${URL}'"
 echo "            - the URL used for downloading components"
 echo
 echo "        VERSION: '${VERSION}'"
@@ -448,7 +450,7 @@ mkdir Cme-init
 pushd Cme-init
 python -m venv cmeinit_venv
 source cmeinit_venv/bin/activate
-curl -sSO ${SETUP}/${CME_INIT}
+curl -sSO ${URL}/${CME_INIT}
 tar -xvzf ${CME_INIT}
 rm ${CME_INIT}
 pip install --no-index -f wheelhouse cmeinit
@@ -506,7 +508,7 @@ mkdir Cme-api
 pushd Cme-api
 python -m venv cmeapi_venv
 source cmeapi_venv/bin/activate
-curl -sSO ${SETUP}/${CME_API_RECOVERY}
+curl -sSO ${URL}/${CME_API_RECOVERY}
 tar -xvzf ${CME_API_RECOVERY}
 rm ${CME_API_RECOVERY}
 pip install --no-index -f wheelhouse cmeapi
@@ -521,7 +523,7 @@ mkdir Cme-hw
 pushd Cme-hw
 python -m venv cmehw_venv
 source cmehw_venv/bin/activate
-curl -sSO ${SETUP}/${CME_HW_RECOVERY}
+curl -sSO ${URL}/${CME_HW_RECOVERY}
 tar -xvzf ${CME_HW_RECOVERY}
 rm ${CME_HW_RECOVERY}
 pip install --no-index -f wheelhouse cmehw
@@ -535,7 +537,7 @@ echo
 echo "  Setting up Cme-web (recovery)..."
 mkdir /www
 pushd /www
-curl -sSO ${SETUP}/${CME_WEB_RECOVERY}
+curl -sSO ${URL}/${CME_WEB_RECOVERY}
 tar -xvzf ${CME_WEB_RECOVERY}
 rm ${CME_WEB_RECOVERY}
 popd
@@ -544,21 +546,21 @@ popd
 # Setup the Cme API docker
 echo
 echo "  Loading Cme API docker..."
-curl -sS ${SETUP}/${CME_API} | docker load
+curl -sS ${URL}/${CME_API} | docker load
 echo "  ...done loading Cme API docker"
 
 
 # Setup the Cme-hw docker
 echo
 echo "  Loading Cme-hw docker..."
-curl -sS ${SETUP}/${CME_HW} | docker load
+curl -sS ${URL}/${CME_HW} | docker load
 echo "  ...done loading Cme-hw docker"
 
 
 # Setup the Cme-web docker
 echo
 echo "  Loading Cme-web docker..."
-curl -sS ${SETUP}/${CME_WEB} | docker load
+curl -sS ${URL}/${CME_WEB} | docker load
 echo "  ...done loading Cme-web docker"
 
 
