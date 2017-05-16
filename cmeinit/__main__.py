@@ -2,10 +2,9 @@
 # RESET functionality.  This script runs at boot from rc.local
 # and requires the associated virtual environment to be
 # activated.
-import signal, os, sys, glob, time, subprocess, threading
+import signal, os, sys, glob, time, subprocess, threading, json
 from datetime import datetime
 
-import RPi.GPIO as GPIO
 import semver
 
 from .common import Config, Logging
@@ -27,6 +26,8 @@ GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
 
 def InitializeGPIO():
+	import RPi.GPIO as GPIO
+
 	# Use Broadcom GPIO numbering
 	GPIO.setmode(GPIO.BCM)
 
@@ -48,6 +49,53 @@ def SetupSignaling():
 	# SIGHUP for cleanup as well.
 	signal.signal(signal.SIGTERM, cleanup)
 	signal.signal(signal.SIGHUP, cleanup)
+
+
+def UpdateVersions():
+	''' Write all versions of installed modules to /data/VERSIONS
+	'''
+	versions = {}
+
+	# get application layer versions (image tags)
+	apps = _list_docker_images()
+
+	# This module (Cme-init)
+	versions['Cme-init'] = [ Config.INFO.VERSION , '--']
+
+	# Cme-api
+	versions['Cme-api'] = [ '--', '--' ]
+	versions['Cme-api'][1] = apps['cmeapi'][1] if apps['cmeapi'] else '--'
+	try:
+		with open(os.path.join(Config.PATHS.APPROOT, '../Cme-api/VERSION'), 'r') as f:
+			versions['Cme-api'][0] = f.readline().strip()
+	except Exception as e:
+		pass
+
+
+	# Cme-hw
+	versions['Cme-hw'] = [ '--', '--' ]
+	versions['Cme-hw'][1] = apps['cmehw'][1] if apps['cmehw'] else '--'
+	try:
+		with open(os.path.join(Config.PATHS.APPROOT, '../Cme-hw/VERSION'), 'r') as f:
+			versions['Cme-hw'][0] = f.readline().strip()
+	except Exception as e:
+		pass
+
+
+	# Cme-web
+	versions['Cme-web'] = [ '--', '--' ]
+	versions['Cme-web'][1] = apps['cmeweb'][1] if apps['cmeweb'] else '--'
+	try:
+		with open(os.path.join(Config.PATHS.WEB_ROOT, 'package.json'), 'r') as f:
+			web_cfg = json.load(f)
+
+		versions['Cme-web'][0] = web_cfg['version']
+	except Exception as e:
+		pass
+
+	# write new VERSIONS
+	with open(os.path.join(Config.PATHS.USERDATA, 'VERSIONS'), 'w') as f:
+		json.dump(versions, f, indent='\t')
 
 
 def reset(ch):
@@ -182,6 +230,9 @@ def main(argv=None):
 
 	# set signaling for clean shutdowns
 	SetupSignaling()
+
+	# update VERSIONS for all installed modules
+	UpdateVersions()
 
 
 	# STAGE 1.  RECOVERY MODE (Green Blinking)
