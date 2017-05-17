@@ -353,7 +353,7 @@ def main(argv=None):
 	GPIO.output(GPIO_STATUS_SOLID, True)
 
 	# Launch hardware layer - don't wait...
-	subprocess.Popen(["cd /root/Cme-hw; source cmehw_venv/bin/activate; python -m cmehw"], shell=True, executable='/bin/bash')
+	#subprocess.Popen(["cd /root/Cme-hw; source cmehw_venv/bin/activate; python -m cmehw"], shell=True, executable='/bin/bash')
 	
 	# This blocks until cme exits
 	subprocess.run(["cd /root/Cme-api; source cmeapi_venv/bin/activate; python -m cmeapi"], shell=True, executable='/bin/bash')

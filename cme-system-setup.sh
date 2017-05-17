@@ -42,7 +42,7 @@ while getopts "$optspec" optchar; do
 				version-init=*)		CME_INIT_VERSION=$val;;
 				version-api=*)		CME_API_RECOVERY_VERSION=$val;;
 				version-api-pkg=*)	CME_API_VERSION=$val;;
-				version-hw=*)		CME_HW_RECOVERY_VERSION=$val;;
+				#version-hw=*)		CME_HW_RECOVERY_VERSION=$val;;
 				version-hw-pkg=*)	CME_HW_VERSION=$val;;
 				version-web=*)		CME_WEB_RECOVERY_VERSION=$val;;
 				version-web-pkg=*)	CME_WEB_VERSION=$val;;
@@ -78,7 +78,7 @@ CME_WEB_PN=1500-007
 # easily be used to upgrade these packages on the end user equipment.
 CME_INIT_VERSION="${CME_INIT_VERSION:-$VERSION}"
 CME_API_RECOVERY_VERSION="${CME_API_RECOVERY_VERSION:-$VERSION}"
-CME_HW_RECOVERY_VERSION="${CME_HW_RECOVERY_VERSION:-$VERSION}"
+#CME_HW_RECOVERY_VERSION="${CME_HW_RECOVERY_VERSION:-$VERSION}"
 CME_WEB_RECOVERY_VERSION="${CME_WEB_RECOVERY_VERSION:-$VERSION}"
 
 # CME Application Layers - these are just like the packages above but
@@ -116,7 +116,7 @@ echo "        CME_INIT_VERSION: '${CME_INIT_VERSION}'"
 echo "            - supervisor/launcher program version"
 echo
 echo "        CME_API_RECOVERY_VERSION:  '${CME_API_RECOVERY_VERSION}'"
-echo "        CME_HW_RECOVERY_VERSION:   '${CME_HW_RECOVERY_VERSION}'"
+#echo "        CME_HW_RECOVERY_VERSION:   '${CME_HW_RECOVERY_VERSION}'"
 echo "        CME_WEB_RECOVERY_VERSION:  '${CME_WEB_RECOVERY_VERSION}'"
 echo "            - recovery mode (base) packages"
 echo
@@ -135,7 +135,7 @@ clear
 # CME Base Packages - package filenames
 CME_INIT=${CME_INIT_PN}-v${CME_INIT_VERSION}-SWARE-CME_INIT.tgz
 CME_API_RECOVERY=${CME_API_PN}-v${CME_API_RECOVERY_VERSION}-SWARE-CME_API.tgz
-CME_HW_RECOVERY=${CME_HW_PN}-v${CME_HW_RECOVERY_VERSION}-SWARE-CME_HW.tgz
+#CME_HW_RECOVERY=${CME_HW_PN}-v${CME_HW_RECOVERY_VERSION}-SWARE-CME_HW.tgz
 CME_WEB_RECOVERY=${CME_WEB_PN}-v${CME_WEB_RECOVERY_VERSION}-SWARE-CME_WEB.tgz
 
 # Application layers - package filenames
@@ -199,6 +199,12 @@ standby() {
 
 
 # Add some useful docker run functions
+
+# Runs the cme-web docker (arg1)
+#	arg1: image name:tag (e.g., cmeweb:1.0.0-10)
+docker-cmeweb() {
+	docker run -d --name cme-web $1
+}
 
 # Interactively run the cme-api docker (arg1, arg2)
 #	arg1: image name:tag (e.g., cmeapi:0.1.0)
@@ -446,6 +452,7 @@ cd
 # Set up Cme-init
 echo
 echo "  Setting up Cme-init..."
+rm -rf Cme-init
 mkdir Cme-init
 pushd Cme-init
 python -m venv cmeinit_venv
@@ -504,6 +511,7 @@ echo "  ...done with Cme-init"
 # Setup the Cme-api layer (recovery)
 echo
 echo "  Setting up Cme-api (recovery)..."
+rm -rf Cme-api
 mkdir Cme-api
 pushd Cme-api
 python -m venv cmeapi_venv
@@ -517,24 +525,26 @@ popd
 
 
 # Setup the Cme-hw layer (recovery)
-echo
-echo "  Setting up Cme-hw (recovery)..."
-mkdir Cme-hw
-pushd Cme-hw
-python -m venv cmehw_venv
-source cmehw_venv/bin/activate
-curl -sSO ${URL}/${CME_HW_RECOVERY}
-tar -xvzf ${CME_HW_RECOVERY}
-rm ${CME_HW_RECOVERY}
-pip install --no-index -f wheelhouse cmehw
-rm -rf wheelhouse
-popd
+#echo
+#echo "  Setting up Cme-hw (recovery)..."
+#rm -rf Cme-hw
+#mkdir Cme-hw
+#pushd Cme-hw
+#python -m venv cmehw_venv
+#source cmehw_venv/bin/activate
+#curl -sSO ${URL}/${CME_HW_RECOVERY}
+#tar -xvzf ${CME_HW_RECOVERY}
+#rm ${CME_HW_RECOVERY}
+#pip install --no-index -f wheelhouse cmehw
+#rm -rf wheelhouse
+#popd
 
 
 
 # Setup the Cme-web application (recovery)
 echo
 echo "  Setting up Cme-web (recovery)..."
+rm -rf /www
 mkdir /www
 pushd /www
 curl -sSO ${URL}/${CME_WEB_RECOVERY}
