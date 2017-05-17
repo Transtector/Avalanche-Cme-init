@@ -396,16 +396,17 @@ def _launch_docker(image):
 	LOGGER.info("Launching module {0}".format(' '.join(cmd)))
 	ID = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode().strip()
 
+	# Wait for the (detached) container to stop running
+	LOGGER.info("Launched {0} ({1})".format(image[0], ID[:8]))
+
 	# cmeweb is just a volume container - run it and return
 	# without worrying about watching the process.
 	if image[0] == 'cmeweb': return
 
-	# Wait for the (detached) container to stop running
-	LOGGER.info("Launched {0}".format(cmd))
-	LOGGER.info("Waiting for {0} to terminate".format(ID))
+	LOGGER.info("Waiting for {0} ({1}) to terminate".format(image[0], ID[:8]))
 	subprocess.run(['docker', 'wait', ID ])  # <--- this should block while container runs!
 
-	LOGGER.info("Module ID {0} terminated".format(ID))
+	LOGGER.info("Module {0} ({1}) terminated".format(image[0], ID[:8]))
 
 	# If _any_ container stops (gets here), then stop/remove all containers
 	_stop_remove_containers()
