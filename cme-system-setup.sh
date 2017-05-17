@@ -457,9 +457,7 @@ mkdir Cme-init
 pushd Cme-init
 python -m venv cmeinit_venv
 source cmeinit_venv/bin/activate
-curl -sSO ${URL}/${CME_INIT}
-tar -xvzf ${CME_INIT}
-rm ${CME_INIT}
+curl -sS ${URL}/${CME_INIT} | tar -xvz
 pip install --no-index -f wheelhouse cmeinit
 rm -rf wheelhouse
 
@@ -516,9 +514,7 @@ mkdir Cme-api
 pushd Cme-api
 python -m venv cmeapi_venv
 source cmeapi_venv/bin/activate
-curl -sSO ${URL}/${CME_API_RECOVERY}
-tar -xvzf ${CME_API_RECOVERY}
-rm ${CME_API_RECOVERY}
+curl -sS ${URL}/${CME_API_RECOVERY} | tar -xvz
 pip install --no-index -f wheelhouse cmeapi
 rm -rf wheelhouse
 popd
@@ -547,9 +543,7 @@ echo "  Setting up Cme-web (recovery)..."
 rm -rf /www
 mkdir /www
 pushd /www
-curl -sSO ${URL}/${CME_WEB_RECOVERY}
-tar -xvzf ${CME_WEB_RECOVERY}
-rm ${CME_WEB_RECOVERY}
+curl -sS ${URL}/${CME_WEB_RECOVERY} | tar -xvz
 popd
 
 
