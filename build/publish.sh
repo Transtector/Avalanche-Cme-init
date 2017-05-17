@@ -38,6 +38,9 @@ cd build
 putS3 ${PACKAGE} Cme
 cd ..
 
+# Add current system setup script
+putS3 cme-system-setup.sh Cme
+
 echo
 echo "    ... done publishing."
 echo

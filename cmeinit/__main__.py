@@ -5,6 +5,7 @@
 import signal, os, sys, glob, time, subprocess, threading, json
 from datetime import datetime
 
+import RPi.GPIO as GPIO
 import semver
 
 from .common import Config, Logging
@@ -26,8 +27,6 @@ GPIO_STANDBY = 19 # Write 1/True to shutdown power (using power control MCU)
 
 
 def InitializeGPIO():
-	import RPi.GPIO as GPIO
-
 	# Use Broadcom GPIO numbering
 	GPIO.setmode(GPIO.BCM)
 

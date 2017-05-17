@@ -469,6 +469,8 @@ function cleanup {
 }
 trap cleanup EXIT
 
+cleanup
+
 if [[ ! -p $IN ]]; then
 	mkfifo $IN
 fi
@@ -476,8 +478,6 @@ fi
 if [[ ! -p $OUT ]]; then
 	mkfifo $OUT
 fi
-
-cleanup
 
 while true
 do
